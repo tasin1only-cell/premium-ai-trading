@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Trading Signal</title>
+
+<style>
+body {
+margin: 0;
+font-family: 'Segoe UI', sans-serif;
+
+/* 🔥 BLACK CARBON BACKGROUND */
+background: 
+radial-gradient(circle at 20% 20%, #111 0%, transparent 40%),
+radial-gradient(circle at 80% 30%, #0a0a0a 0%, transparent 50%),
+radial-gradient(circle at 50% 80%, #0f0f0f 0%, transparent 50%),
+linear-gradient(135deg, #000, #111);
+
+color: white;
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100vh;
+}
+
+/* MAIN CARD */
+.container {
+background: rgba(20, 20, 20, 0.85);
+backdrop-filter: blur(12px);
+padding: 30px;
+border-radius: 18px;
+width: 360px;
+text-align: center;
+
+/* GOLD BORDER */
+border: 1px solid rgba(212, 175, 55, 0.3);
+box-shadow: 0 0 25px rgba(212, 175, 55, 0.15);
+}
+
+/* TITLE */
+h2 {
+color: #d4af37;
+margin-bottom: 15px;
+letter-spacing: 1px;
+}
+
+/* DROPDOWN */
+select {
+width: 100%;
+padding: 10px;
+margin-top: 10px;
+border-radius: 8px;
+border: 1px solid rgba(212, 175, 55, 0.3);
+background: #0a0a0a;
+color: white;
+outline: none;
+}
+
+/* GOLD BUTTON */
+button {
+margin-top: 20px;
+padding: 12px 20px;
+border: none;
+border-radius: 10px;
+background: linear-gradient(45deg, #d4af37, #ffcc33, #b8860b);
+color: black;
+font-weight: bold;
+cursor: pointer;
+transition: 0.3s;
+box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+button:hover {
+transform: scale(1.05);
+box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+}
+
+/* OUTPUT */
+#signalBox {
+font-size: 22px;
+margin-top: 20px;
+color: #ffd700;
+}
+
+#conf {
+margin-top: 10px;
+color: #f5f5f5;
+}
+
+#extra {
+margin-top: 10px;
+font-size: 14px;
+color: #c0c0c0;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>AI Trading Signal</h2>
+
+<!-- SESSION / COUNTRY -->
+<select id="country">
+  <option value="Global">Global</option>
+  <option value="USA Session">USA Session</option>
+  <option value="London Session">London Session</option>
+  <option value="Asia Session">Asia Session</option>
+</select>
+
+<!-- TRADING ASSETS -->
+<select id="asset">
+  <option value="EUR/USD">EUR/USD</option>
+  <option value="GBP/USD">GBP/USD</option>
+  <option value="USD/JPY">USD/JPY</option>
+  <option value="AUD/USD">AUD/USD</option>
+  <option value="USD/CHF">USD/CHF</option>
+  <option value="USD/CAD">USD/CAD</option>
+  <option value="NZD/USD">NZD/USD</option>
+  <option value="EUR/GBP">EUR/GBP</option>
+  <option value="EUR/JPY">EUR/JPY</option>
+  <option value="GBP/JPY">GBP/JPY</option>
+  <option value="BTC/USD">BTC/USD</option>
+  <option value="ETH/USD">ETH/USD</option>
+  <option value="XAU/USD (Gold)">XAU/USD (Gold)</option>
+  <option value="XAG/USD (Silver)">XAG/USD (Silver)</option>
+</select>
+
+<!-- OUTPUT -->
+<div id="signalBox">SIGNAL: --</div>
+<div id="conf">CONFIDENCE: --</div>
+<div id="extra">Asset: -- | Session: --</div>
+
+<!-- BUTTON -->
+<button onclick="generateSignal()">Generate Signal</button>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

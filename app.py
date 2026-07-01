@@ -9,20 +9,22 @@ app = Flask(__name__)
 CORS(app)
 
 # ======================
-# DATA
+# GLOBAL STATE
 # ======================
 prices = []
 last_signal_time = 0
 
 
 # ======================
-# PRICE FEED
+# PRICE FEED (STABLE)
 # ======================
 def price_loop():
     price = 100
 
     while True:
-        price += random.uniform(-1.5, 1.5)
+        move = random.uniform(-1.2, 1.2)
+        price += move
+
         prices.append(price)
 
         if len(prices) > 500:
@@ -32,11 +34,11 @@ def price_loop():
 
 
 # ======================
-# EMA
+# SAFE EMA
 # ======================
 def ema(data, period):
-    if len(data) < period:
-        return np.mean(data) if data else 0
+    if len(data) < 5:
+        return data[-1] if data else 0
 
     alpha = 2 / (period + 1)
     result = data[0]
@@ -79,12 +81,13 @@ def macd(data):
 
 
 # ======================
-# AI ENGINE (CANDLE LOCKED)
+# AI ENGINE (FIXED + STABLE)
 # ======================
 def ai_engine():
     global last_signal_time
 
-    if len(prices) < 50:
+    # 🔥 reduced requirement (FIXED)
+    if len(prices) < 15:
         return {
             "signal": "WAIT",
             "confidence": 50,
@@ -98,7 +101,7 @@ def ai_engine():
 
     now = time.time()
 
-    # 🔥 60 sec candle lock
+    # 🔥 60 sec candle lock (IMPORTANT)
     if now - last_signal_time < 60:
         return {
             "signal": "WAIT",
@@ -118,45 +121,64 @@ def ai_engine():
 
     score = 0
 
+    # ======================
+    # TREND
+    # ======================
     if ema20 > ema50:
-        score += 30
-    else:
-        score -= 30
-
-    if current_rsi < 45:
-        score += 25
-    elif current_rsi > 55:
-        score -= 25
-
-    if current_macd > 0.03:
-        score += 25
-    elif current_macd < -0.03:
-        score -= 25
-
-    momentum = prices[-1] - prices[-20]
-
-    if momentum > 0.5:
         score += 20
-    elif momentum < -0.5:
+    else:
         score -= 20
 
+    # ======================
+    # RSI FILTER
+    # ======================
+    if current_rsi < 45:
+        score += 20
+    elif current_rsi > 55:
+        score -= 20
+
+    # ======================
+    # MACD FILTER
+    # ======================
+    if current_macd > 0.02:
+        score += 20
+    elif current_macd < -0.02:
+        score -= 20
+
+    # ======================
+    # MOMENTUM
+    # ======================
+    if len(prices) > 10:
+        momentum = prices[-1] - prices[-10]
+    else:
+        momentum = 0
+
+    if momentum > 0.4:
+        score += 15
+    elif momentum < -0.4:
+        score -= 15
+
+    # ======================
+    # DECISION
+    # ======================
     base_conf = 55 + abs(score)
 
-    if score >= 60:
+    if score >= 40:
         signal = "BUY"
         trend = "UP"
-        confidence = min(95, base_conf + 10)
+        confidence = min(92, base_conf)
 
-    elif score <= -60:
+    elif score <= -40:
         signal = "SELL"
         trend = "DOWN"
-        confidence = min(95, base_conf + 10)
+        confidence = min(92, base_conf)
 
     else:
         signal = "WAIT"
         trend = "SIDE"
         confidence = 50
 
+    # 🔥 update lock only when real decision happens
     last_signal_time = now
 
     return {
@@ -172,7 +194,7 @@ def ai_engine():
 
 
 # ======================
-# ROUTES (IMPORTANT FIX)
+# ROUTES
 # ======================
 @app.route("/")
 def home():
@@ -198,9 +220,13 @@ def debug():
 
 
 # ======================
-# START
+# START THREAD
 # ======================
 threading.Thread(target=price_loop, daemon=True).start()
 
+
+# ======================
+# RUN SERVER
+# ======================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

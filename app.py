@@ -7,28 +7,29 @@ app = Flask(__name__)
 CORS(app)
 
 # ======================
-# MARKET DATA
+# LIVE MARKET SIMULATION
 # ======================
-prices = [100 + random.uniform(-1, 1) for _ in range(300)]
+prices = [100 + random.uniform(-1, 1) for _ in range(200)]
 
 
 # ======================
-# UPDATE PRICE
+# LIVE PRICE UPDATE
 # ======================
 def update_price():
     global prices
-    change = random.uniform(-1.2, 1.2)
-    prices.append(prices[-1] + change)
+    change = random.uniform(-1.5, 1.5)
+    new_price = prices[-1] + change
+    prices.append(new_price)
 
     if len(prices) > 500:
         prices.pop(0)
 
 
 # ======================
-# SIMPLE AI FEATURES
+# LIVE FEATURES
 # ======================
 def get_features(data):
-    window = data[-20:]
+    window = data[-30:]
 
     momentum = window[-1] - window[0]
     volatility = np.std(window)
@@ -38,42 +39,39 @@ def get_features(data):
 
 
 # ======================
-# SIMPLE AI ENGINE (STABLE)
+# ADAPTIVE AI ENGINE (LEVEL 4)
 # ======================
 def ai_engine(data):
 
     momentum, volatility, mean_price = get_features(data)
     price = data[-1]
 
-    # base probabilities
-    buy = 0.5
-    sell = 0.5
+    buy_score = 50
+    sell_score = 50
 
     # momentum effect
-    if momentum > 0:
-        buy += 0.2
-    else:
-        sell += 0.2
+    buy_score += momentum * 2
+    sell_score -= momentum * 2
 
-    # volatility control
-    if volatility > 2:
-        buy -= 0.05
-        sell -= 0.05
+    # volatility filter (avoid chaos)
+    if volatility > 2.5:
+        buy_score -= 5
+        sell_score -= 5
 
-    # price relation
+    # price trend
     if price > mean_price:
-        buy += 0.1
+        buy_score += 10
     else:
-        sell += 0.1
+        sell_score += 10
 
-    total = buy + sell
+    # normalize
+    total = buy_score + sell_score
+    buy_prob = buy_score / total
+    sell_prob = sell_score / total
 
-    buy_prob = buy / total
-    sell_prob = sell / total
-
-    if buy_prob > 0.6:
+    if buy_prob > 0.60:
         signal = "BUY"
-    elif sell_prob > 0.6:
+    elif sell_prob > 0.60:
         signal = "SELL"
     else:
         signal = "WAIT"
@@ -84,17 +82,17 @@ def ai_engine(data):
         "price": round(price, 2),
         "signal": signal,
         "confidence": round(confidence, 2),
-        "buy_probability": round(buy_prob, 2),
-        "sell_probability": round(sell_prob, 2),
+        "buy_prob": round(buy_prob, 2),
+        "sell_prob": round(sell_prob, 2),
     }
 
 
 # ======================
-# ROUTES
+# API ROUTES
 # ======================
 @app.route("/")
 def home():
-    return "AI Trading Pro Running ✔"
+    return "Level 4 Live AI Engine Running ✔"
 
 
 @app.route("/api/signal")
@@ -103,13 +101,22 @@ def signal():
     return jsonify(ai_engine(prices))
 
 
+@app.route("/api/live")
+def live():
+    update_price()
+    return jsonify({
+        "price": round(prices[-1], 2),
+        "history": prices[-50:]  # live mini stream
+    })
+
+
 @app.route("/api/history")
 def history():
     return jsonify(prices)
 
 
 # ======================
-# IMPORTANT RENDER FIX
+# RUN (RENDER SAFE)
 # ======================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

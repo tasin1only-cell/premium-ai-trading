@@ -1,5 +1,15 @@
 import numpy as np
+import time
 
+# ======================
+# GLOBAL CANDLE LOCK
+# ======================
+last_signal_time = 0
+
+
+# ======================
+# EMA
+# ======================
 def ema(data, period):
     if len(data) < period:
         return np.mean(data) if data else 0
@@ -13,6 +23,9 @@ def ema(data, period):
     return result
 
 
+# ======================
+# RSI
+# ======================
 def rsi(data, period=14):
     if len(data) < period + 1:
         return 50
@@ -34,16 +47,18 @@ def rsi(data, period=14):
     return 100 - (100 / (1 + rs))
 
 
+# ======================
+# MACD
+# ======================
 def macd(data):
-    ema12 = ema(data, 12)
-    ema26 = ema(data, 26)
-    return ema12 - ema26
+    return ema(data, 12) - ema(data, 26)
 
 
-# =========================
-# WINRATE BOOSTER AI ENGINE
-# =========================
+# ======================
+# WINRATE BOOSTED AI ENGINE
+# ======================
 def ai_engine(prices):
+    global last_signal_time
 
     if len(prices) < 50:
         return {
@@ -51,6 +66,21 @@ def ai_engine(prices):
             "confidence": 50,
             "trend": "SIDE",
             "price": prices[-1] if prices else 0,
+            "rsi": 50,
+            "ema20": 0,
+            "ema50": 0,
+            "macd": 0
+        }
+
+    now = time.time()
+
+    # 🔥 60 sec candle lock (VERY IMPORTANT)
+    if now - last_signal_time < 60:
+        return {
+            "signal": "WAIT",
+            "confidence": 50,
+            "trend": "SIDE",
+            "price": round(prices[-1], 2),
             "rsi": 50,
             "ema20": 0,
             "ema50": 0,
@@ -67,12 +97,10 @@ def ai_engine(prices):
     # ======================
     # TREND FILTER
     # ======================
-    trend_strength = abs(ema20 - ema50)
-
-    if ema20 > ema50 and trend_strength > 0.3:
-        score += 35
-    elif ema20 < ema50 and trend_strength > 0.3:
-        score -= 35
+    if ema20 > ema50:
+        score += 30
+    else:
+        score -= 30
 
     # ======================
     # RSI FILTER
@@ -101,15 +129,6 @@ def ai_engine(prices):
         score -= 20
 
     # ======================
-    # VOLATILITY FILTER
-    # ======================
-    recent = prices[-10:]
-    volatility = max(recent) - min(recent)
-
-    if volatility < 0.5:
-        score *= 0.8
-
-    # ======================
     # FINAL DECISION
     # ======================
     base_conf = 55 + abs(score)
@@ -128,6 +147,9 @@ def ai_engine(prices):
         signal = "WAIT"
         trend = "SIDE"
         confidence = 50
+
+    # 🔥 update candle lock only when real signal generated
+    last_signal_time = now
 
     return {
         "signal": signal,

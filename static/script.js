@@ -1,11 +1,15 @@
-console.log("LEVEL 6C STABLE JS LOADED");
+console.log("LEVEL 6C PRO JS LOADED");
 
 // ======================
 // API
 // ======================
 const API_URL = "https://premium-ai-trading.onrender.com/api/signal";
 
+// ======================
+// STATE CONTROL
+// ======================
 let running = false;
+let started = false;
 
 
 // ======================
@@ -18,7 +22,7 @@ setInterval(() => {
 
 
 // ======================
-// CANDLE TIMER (SYNC FIXED)
+// VISUAL CANDLE TIMER (SYNC IMPROVED)
 // ======================
 setInterval(() => {
     const sec = new Date().getSeconds();
@@ -28,7 +32,11 @@ setInterval(() => {
 
     if (el) {
         el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
-        el.style.color = remaining <= 5 ? "red" : "#ffcc00";
+
+        el.style.color =
+            remaining <= 5 ? "red" :
+            remaining <= 15 ? "orange" :
+            "#ffcc00";
     }
 }, 1000);
 
@@ -66,9 +74,10 @@ function loadChart(symbol = "FX:EURUSD") {
 
 
 // ======================
-// ASSET CHANGE FIX (IMPORTANT)
+// ASSET CHANGE FIX
 // ======================
 function changeAsset() {
+
     const asset = document.getElementById("asset").value;
 
     const map = {
@@ -85,20 +94,83 @@ function changeAsset() {
 
 
 // ======================
-// INIT
+// UI UPDATE ENGINE (CLEAN)
 // ======================
-window.onload = () => {
-    console.log("PAGE LOADED");
-    loadChart("FX:EURUSD");
-};
+function updateUI(data) {
+
+    const signalBox = document.getElementById("signalBox");
+    const trendBox = document.getElementById("trendBox");
+    const conf = document.getElementById("conf");
+    const rsiFill = document.getElementById("rsiFill");
+    const log = document.getElementById("historyLog");
+
+    // SIGNAL
+    if (signalBox) {
+        signalBox.innerText = "SIGNAL : " + data.signal;
+
+        signalBox.style.color =
+            data.signal === "BUY" ? "#00ff66" :
+            data.signal === "SELL" ? "#ff4444" :
+            "gold";
+    }
+
+    // TREND
+    if (trendBox) {
+        trendBox.innerText = "TREND: " + data.trend;
+
+        trendBox.style.color =
+            data.trend === "UP" ? "#00ff66" :
+            data.trend === "DOWN" ? "#ff4444" :
+            "gold";
+    }
+
+    // CONFIDENCE
+    if (conf) {
+        conf.innerText = "Confidence : " + data.confidence + "%";
+
+        conf.style.color =
+            data.confidence > 70 ? "#00ff66" :
+            data.confidence < 40 ? "#ff4444" :
+            "gold";
+    }
+
+    // RSI BAR
+    if (rsiFill) {
+        rsiFill.style.width = data.rsi + "%";
+
+        rsiFill.style.background =
+            data.rsi > 70 ? "red" :
+            data.rsi < 30 ? "lime" :
+            "orange";
+    }
+
+    // HISTORY
+    if (log) {
+
+        const item = document.createElement("div");
+
+        item.style.padding = "4px";
+        item.style.borderBottom = "1px solid #222";
+
+        item.innerText =
+            `${data.signal} | RSI ${data.rsi} | P ${data.price} | ${new Date().toLocaleTimeString()}`;
+
+        log.prepend(item);
+
+        while (log.childNodes.length > 15) {
+            log.removeChild(log.lastChild);
+        }
+    }
+}
 
 
 // ======================
-// SIGNAL ENGINE (FIXED + NO SPAM)
+// SIGNAL ENGINE (STABLE PRO)
 // ======================
 async function generateSignal() {
 
     if (running) return;
+
     running = true;
 
     try {
@@ -111,94 +183,41 @@ async function generateSignal() {
 
         console.log("DATA:", data);
 
-        // ======================
-        // SIGNAL
-        // ======================
-        const signalBox = document.getElementById("signalBox");
-
-        if (signalBox) {
-            signalBox.innerText = "SIGNAL : " + data.signal;
-
-            signalBox.style.color =
-                data.signal === "BUY" ? "#00ff66" :
-                data.signal === "SELL" ? "#ff4444" :
-                "gold";
-        }
-
-        // ======================
-        // TREND
-        // ======================
-        const trend = document.getElementById("trendBox");
-
-        if (trend) {
-            trend.innerText = "TREND: " + data.trend;
-
-            trend.style.color =
-                data.trend === "UP" ? "#00ff66" :
-                data.trend === "DOWN" ? "#ff4444" :
-                "gold";
-        }
-
-        // ======================
-        // CONFIDENCE
-        // ======================
-        const conf = document.getElementById("conf");
-
-        if (conf) {
-            conf.innerText = "Confidence : " + data.confidence + "%";
-
-            conf.style.color =
-                data.confidence > 70 ? "#00ff66" :
-                data.confidence < 40 ? "#ff4444" :
-                "gold";
-        }
-
-        // ======================
-        // RSI BAR
-        // ======================
-        const rsiFill = document.getElementById("rsiFill");
-
-        if (rsiFill) {
-            rsiFill.style.width = data.rsi + "%";
-
-            rsiFill.style.background =
-                data.rsi > 70 ? "red" :
-                data.rsi < 30 ? "lime" :
-                "orange";
-        }
-
-        // ======================
-        // HISTORY
-        // ======================
-        const log = document.getElementById("historyLog");
-
-        if (log) {
-            const item = document.createElement("div");
-
-            item.style.padding = "4px";
-            item.style.borderBottom = "1px solid #222";
-
-            item.innerText =
-                `${data.signal} | RSI ${data.rsi} | P ${data.price} | ${new Date().toLocaleTimeString()}`;
-
-            log.prepend(item);
-
-            while (log.childNodes.length > 15) {
-                log.removeChild(log.lastChild);
-            }
-        }
+        updateUI(data);
 
     } catch (err) {
         console.log("ERROR:", err);
     }
 
-    running = false;
+    setTimeout(() => {
+        running = false;
+    }, 1200);
 }
 
 
 // ======================
-// FIXED AUTO RUN (IMPORTANT)
+// AUTO START (FIXED)
 // ======================
-// 🔥 60 sec instead of 5 sec
-setInterval(generateSignal, 60000);
-generateSignal();
+function startBot() {
+
+    if (started) return;
+
+    started = true;
+
+    generateSignal();
+
+    setInterval(generateSignal, 60000); // 1 minute candle sync
+}
+
+
+// ======================
+// INIT
+// ======================
+window.onload = () => {
+
+    console.log("PAGE LOADED");
+
+    loadChart("FX:EURUSD");
+
+    startBot();
+};

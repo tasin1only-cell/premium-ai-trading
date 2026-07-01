@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 import numpy as np
 import threading
@@ -9,24 +9,20 @@ app = Flask(__name__)
 CORS(app)
 
 # ======================
-# PRICE DATA STORE
+# DATA
 # ======================
 prices = []
-
-# 🔥 candle lock (global state)
 last_signal_time = 0
 
 
 # ======================
-# PRICE FEED (SIMULATED MARKET)
+# PRICE FEED
 # ======================
 def price_loop():
     price = 100
 
     while True:
-        move = random.uniform(-1.5, 1.5)
-        price += move
-
+        price += random.uniform(-1.5, 1.5)
         prices.append(price)
 
         if len(prices) > 500:
@@ -83,7 +79,7 @@ def macd(data):
 
 
 # ======================
-# WINRATE BOOSTED AI ENGINE
+# AI ENGINE (CANDLE LOCKED)
 # ======================
 def ai_engine():
     global last_signal_time
@@ -102,7 +98,7 @@ def ai_engine():
 
     now = time.time()
 
-    # 🔥 60 SEC CANDLE LOCK
+    # 🔥 60 sec candle lock
     if now - last_signal_time < 60:
         return {
             "signal": "WAIT",
@@ -122,33 +118,21 @@ def ai_engine():
 
     score = 0
 
-    # ======================
-    # TREND FILTER
-    # ======================
     if ema20 > ema50:
         score += 30
     else:
         score -= 30
 
-    # ======================
-    # RSI FILTER
-    # ======================
     if current_rsi < 45:
         score += 25
     elif current_rsi > 55:
         score -= 25
 
-    # ======================
-    # MACD FILTER
-    # ======================
     if current_macd > 0.03:
         score += 25
     elif current_macd < -0.03:
         score -= 25
 
-    # ======================
-    # MOMENTUM FILTER
-    # ======================
     momentum = prices[-1] - prices[-20]
 
     if momentum > 0.5:
@@ -156,9 +140,6 @@ def ai_engine():
     elif momentum < -0.5:
         score -= 20
 
-    # ======================
-    # FINAL DECISION
-    # ======================
     base_conf = 55 + abs(score)
 
     if score >= 60:
@@ -176,7 +157,6 @@ def ai_engine():
         trend = "SIDE"
         confidence = 50
 
-    # 🔥 update lock only when real signal generated
     last_signal_time = now
 
     return {
@@ -192,11 +172,11 @@ def ai_engine():
 
 
 # ======================
-# ROUTES
+# ROUTES (IMPORTANT FIX)
 # ======================
 @app.route("/")
 def home():
-    return "Level 6C STABLE AI RUNNING ✔"
+    return render_template("index.html")
 
 
 @app.route("/api/signal")
@@ -218,13 +198,9 @@ def debug():
 
 
 # ======================
-# START PRICE LOOP
+# START
 # ======================
 threading.Thread(target=price_loop, daemon=True).start()
 
-
-# ======================
-# RUN APP
-# ======================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

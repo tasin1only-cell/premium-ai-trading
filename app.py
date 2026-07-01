@@ -22,38 +22,39 @@ def price_loop():
     price = 100
 
     while True:
-        move = random.uniform(-1.2, 1.2)
-        price += move
+        price += random.uniform(-1.3, 1.3)
 
         prices.append(price)
 
-        if len(prices) > 500:
+        if len(prices) > 1000:
             prices.pop(0)
 
         time.sleep(1)
 
 
 # ======================
-# SAFE EMA
+# SAFE EMA (FIXED VERSION)
 # ======================
 def ema(data, period):
-    if len(data) < 5:
+    if len(data) < period:
         return data[-1] if data else 0
 
     alpha = 2 / (period + 1)
-    result = data[0]
 
-    for p in data:
+    # 🔥 FIX: proper initialization
+    result = np.mean(data[:period])
+
+    for p in data[period:]:
         result = alpha * p + (1 - alpha) * result
 
     return result
 
 
 # ======================
-# RSI
+# RSI (STABLE)
 # ======================
 def rsi(data, period=14):
-    if len(data) < period + 1:
+    if len(data) < period + 2:
         return 50
 
     gains = []
@@ -74,20 +75,26 @@ def rsi(data, period=14):
 
 
 # ======================
-# MACD
+# MACD (SAFE)
 # ======================
 def macd(data):
-    return ema(data, 12) - ema(data, 26)
+    if len(data) < 26:
+        return 0
+
+    ema12 = ema(data, 12)
+    ema26 = ema(data, 26)
+
+    return ema12 - ema26
 
 
 # ======================
-# AI ENGINE (FIXED + STABLE)
+# AI ENGINE (STABLE + FIXED)
 # ======================
 def ai_engine():
     global last_signal_time
 
-    # 🔥 reduced requirement (FIXED)
-    if len(prices) < 15:
+    # 🔥 minimum data requirement FIXED
+    if len(prices) < 25:
         return {
             "signal": "WAIT",
             "confidence": 50,
@@ -101,7 +108,7 @@ def ai_engine():
 
     now = time.time()
 
-    # 🔥 60 sec candle lock (IMPORTANT)
+    # 🔥 60 sec candle lock
     if now - last_signal_time < 60:
         return {
             "signal": "WAIT",
@@ -122,12 +129,12 @@ def ai_engine():
     score = 0
 
     # ======================
-    # TREND
+    # TREND FILTER
     # ======================
     if ema20 > ema50:
-        score += 20
+        score += 25
     else:
-        score -= 20
+        score -= 25
 
     # ======================
     # RSI FILTER
@@ -148,27 +155,24 @@ def ai_engine():
     # ======================
     # MOMENTUM
     # ======================
-    if len(prices) > 10:
-        momentum = prices[-1] - prices[-10]
-    else:
-        momentum = 0
+    momentum = prices[-1] - prices[-10]
 
-    if momentum > 0.4:
+    if momentum > 0.5:
         score += 15
-    elif momentum < -0.4:
+    elif momentum < -0.5:
         score -= 15
 
     # ======================
-    # DECISION
+    # FINAL DECISION
     # ======================
     base_conf = 55 + abs(score)
 
-    if score >= 40:
+    if score >= 45:
         signal = "BUY"
         trend = "UP"
         confidence = min(92, base_conf)
 
-    elif score <= -40:
+    elif score <= -45:
         signal = "SELL"
         trend = "DOWN"
         confidence = min(92, base_conf)
@@ -178,7 +182,6 @@ def ai_engine():
         trend = "SIDE"
         confidence = 50
 
-    # 🔥 update lock only when real decision happens
     last_signal_time = now
 
     return {
@@ -211,16 +214,19 @@ def history():
     return jsonify(prices[-100:])
 
 
+# ======================
+# DEBUG (VERY IMPORTANT)
+# ======================
 @app.route("/debug")
 def debug():
     return {
         "price_count": len(prices),
-        "last_price": prices[-1] if prices else None
+        "last_prices": prices[-5:] if prices else []
     }
 
 
 # ======================
-# START THREAD
+# START PRICE FEED THREAD
 # ======================
 threading.Thread(target=price_loop, daemon=True).start()
 

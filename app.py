@@ -1,36 +1,106 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from ai_engine import analyze
+from flask import Flask, jsonify, request
+import random
+import math
 
 app = Flask(__name__)
-CORS(app)
 
-# Home route (test)
-@app.route("/")
-def home():
-    return "AI Server Running Successfully"
+# ======================
+# SIMPLE MARKET SIM (replace later with real API)
+# ======================
+price = 100.0
 
-# Main AI prediction route
-@app.route("/predict", methods=["POST"])
-def predict():
-    try:
-        data = request.json
+history = [100 + random.uniform(-1, 1) for _ in range(50)]
 
-        rsi = data.get("rsi")
-        macd = data.get("macd")
-        ema = data.get("ema")
 
-        result = analyze(rsi, macd, ema)
+# ======================
+# RSI CALC
+# ======================
+def rsi(data):
+    gain = 0
+    loss = 0
 
-        return jsonify({
-            "signal": result,
-            "confidence": 75
-        })
+    for i in range(1, len(data)):
+        diff = data[i] - data[i-1]
+        if diff > 0:
+            gain += diff
+        else:
+            loss += abs(diff)
 
-    except Exception as e:
-        return jsonify({
-            "error": str(e)
-        })
+    rs = gain / (loss or 1)
+    return 100 - (100 / (1 + rs))
+
+
+# ======================
+# TREND
+# ======================
+def trend(data):
+    if len(data) < 10:
+        return "SIDE"
+
+    if data[-1] > data[-10]:
+        return "UP"
+    elif data[-1] < data[-10]:
+        return "DOWN"
+    return "SIDE"
+
+
+# ======================
+# AI ENGINE v3
+# ======================
+def ai_engine(data):
+
+    t = trend(data)
+    r = rsi(data)
+
+    signal = "WAIT"
+    confidence = 50
+
+    if t == "UP" and r < 70:
+        signal = "BUY"
+        confidence = 75 + random.randint(0, 20)
+
+    elif t == "DOWN" and r > 30:
+        signal = "SELL"
+        confidence = 75 + random.randint(0, 20)
+
+    else:
+        signal = "WAIT"
+        confidence = 40 + random.randint(0, 15)
+
+    return {
+        "trend": t,
+        "rsi": round(r, 2),
+        "signal": signal,
+        "confidence": confidence,
+        "price": data[-1]
+    }
+
+
+# ======================
+# UPDATE MARKET
+# ======================
+def update_price():
+    global history
+    move = random.uniform(-1.5, 1.5)
+    new_price = history[-1] + move
+    history.append(new_price)
+    if len(history) > 100:
+        history.pop(0)
+
+
+# ======================
+# API
+# ======================
+@app.route("/api/signal")
+def get_signal():
+    update_price()
+    return jsonify(ai_engine(history))
+
+
+@app.route("/api/history")
+def get_history():
+    return jsonify(history)
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    app.run(debug=True)

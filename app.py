@@ -13,26 +13,9 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ======================
-# REAL MARKET DATA
+# LIVE PRICES
 # ======================
 prices = []
-
-
-# ======================
-# BINANCE LIVE FEED
-# ======================
-def handle_message(msg):
-    global prices
-
-    price = float(msg['c'])  # current price
-
-    prices.append(price)
-
-    if len(prices) > 500:
-        prices.pop(0)
-
-    if len(prices) > 30:
-        emit_signal()
 
 
 # ======================
@@ -72,30 +55,55 @@ def ai_engine(data):
     else:
         signal = "WAIT"
 
+    rsi = 50 + (buy_prob - sell_prob) * 50
+
     return {
         "price": round(window[-1], 2),
         "signal": signal,
         "buy": round(buy_prob, 2),
-        "sell": round(sell_prob, 2)
+        "sell": round(sell_prob, 2),
+        "rsi": round(rsi, 2)
     }
 
 
 # ======================
-# EMIT SIGNAL
+# EMIT REALTIME SIGNAL
 # ======================
 def emit_signal():
+    if len(prices) < 30:
+        return
+
     data = ai_engine(prices)
-    socketio.emit("update", data)
+
+    socketio.emit("update", {
+        "price": data["price"],
+        "signal": data["signal"],
+        "rsi": data["rsi"],
+        "confidence": round(data["buy"] * 100, 2),
+        "trend": "UP" if data["signal"] == "BUY" else "DOWN"
+    })
 
 
 # ======================
-# START BINANCE STREAM
+# BINANCE STREAM
 # ======================
+def handle_message(msg):
+    global prices
+
+    price = float(msg['c'])
+    prices.append(price)
+
+    if len(prices) > 500:
+        prices.pop(0)
+
+    if len(prices) > 30:
+        emit_signal()
+
+
 def start_stream():
     twm = ThreadedWebsocketManager()
     twm.start()
 
-    # BTCUSDT live stream
     twm.start_symbol_ticker_socket(
         callback=handle_message,
         symbol="BTCUSDT"
@@ -107,7 +115,31 @@ def start_stream():
 # ======================
 @app.route("/")
 def home():
-    return "Level 5 Path B Real Market AI Running ✔"
+    return "AI Trading Pro Running ✔"
+
+
+# ✅ FIXED API ROUTE (THIS WAS MISSING BEFORE)
+@app.route("/api/signal")
+def signal():
+
+    if len(prices) < 30:
+        return jsonify({
+            "signal": "WAIT",
+            "price": 0,
+            "confidence": 0,
+            "trend": "SIDE",
+            "rsi": 50
+        })
+
+    data = ai_engine(prices)
+
+    return jsonify({
+        "price": data["price"],
+        "signal": data["signal"],
+        "confidence": round(data["buy"] * 100, 2),
+        "trend": "UP" if data["signal"] == "BUY" else "DOWN",
+        "rsi": data["rsi"]
+    })
 
 
 @app.route("/api/history")

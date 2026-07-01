@@ -1,4 +1,4 @@
-console.log("LEVEL 6B FULL FINAL SYSTEM LOADED");
+console.log("SAFE MODE JS LOADED");
 
 const API_URL = "https://premium-ai-trading.onrender.com/api/signal";
 
@@ -7,33 +7,47 @@ let widget = null;
 
 
 // ======================
-// CLOCK
+// SAFE DOM HELPER
+// ======================
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = value;
+}
+
+
+// ======================
+// CLOCK (SAFE)
 // ======================
 setInterval(() => {
-    const el = document.getElementById("clock");
-    if (el) el.innerText = new Date().toLocaleTimeString();
-}, 1000);
-
-
-// ======================
-// CANDLE TIMER (REAL TIME)
-// ======================
-setInterval(() => {
-    const sec = new Date().getSeconds();
-    const remaining = 60 - sec;
-
-    const el = document.getElementById("candle");
-
-    if (el) {
-        el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
-
-        el.style.color = remaining <= 5 ? "red" : "#ffcc00";
+    try {
+        setText("clock", new Date().toLocaleTimeString());
+    } catch (e) {
+        console.log(e);
     }
 }, 1000);
 
 
 // ======================
-// CHART INIT FIX (IMPORTANT)
+// CANDLE TIMER (SAFE)
+// ======================
+setInterval(() => {
+    try {
+        const sec = new Date().getSeconds();
+        const remaining = 60 - sec;
+
+        const el = document.getElementById("candle");
+        if (el) {
+            el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
+            el.style.color = remaining <= 5 ? "red" : "#ffcc00";
+        }
+    } catch (e) {
+        console.log(e);
+    }
+}, 1000);
+
+
+// ======================
+// CHART SAFE INIT
 // ======================
 function loadChart(symbol = "FX:EURUSD") {
 
@@ -45,6 +59,11 @@ function loadChart(symbol = "FX:EURUSD") {
         el.innerHTML = "";
 
         setTimeout(() => {
+
+            if (typeof TradingView === "undefined") {
+                console.log("TradingView not loaded");
+                return;
+            }
 
             widget = new TradingView.widget({
                 container_id: "tradingview_chart",
@@ -59,36 +78,16 @@ function loadChart(symbol = "FX:EURUSD") {
                 allow_symbol_change: false
             });
 
-        }, 400);
+        }, 600);
 
-    } catch (err) {
-        console.log("Chart Error:", err);
+    } catch (e) {
+        console.log("Chart Error:", e);
     }
 }
 
 
 // ======================
-// ASSET CHANGE
-// ======================
-function changeAsset() {
-
-    const asset = document.getElementById("asset").value;
-
-    const map = {
-        "EUR/USD": "FX:EURUSD",
-        "GBP/USD": "FX:GBPUSD",
-        "USD/JPY": "FX:USDJPY",
-        "BTC/USD": "BINANCE:BTCUSDT",
-        "ETH/USD": "BINANCE:ETHUSDT",
-        "XAU/USD": "OANDA:XAUUSD"
-    };
-
-    loadChart(map[asset] || "FX:EURUSD");
-}
-
-
-// ======================
-// AUTO SIGNAL ENGINE
+// SAFE SIGNAL ENGINE
 // ======================
 async function fetchSignal() {
 
@@ -105,84 +104,33 @@ async function fetchSignal() {
 
         console.log("DATA:", data);
 
-        // ======================
-        // SIGNAL
-        // ======================
-        const signalBox = document.getElementById("signalBox");
+        setText("signalBox", "SIGNAL : " + data.signal);
+        setText("trendBox", "TREND: " + data.trend);
+        setText("conf", "Confidence : " + data.confidence + "%");
 
-        if (signalBox) {
-            signalBox.innerText = "SIGNAL : " + data.signal;
-
-            signalBox.style.color =
-                data.signal === "BUY" ? "#00ff66" :
-                data.signal === "SELL" ? "#ff4444" :
-                "gold";
-
-            signalBox.style.transform = "scale(1.15)";
-            setTimeout(() => signalBox.style.transform = "scale(1)", 200);
-        }
-
-        // ======================
-        // TREND
-        // ======================
-        const trend = document.getElementById("trendBox");
-
-        if (trend) {
-            trend.innerText = "TREND: " + data.trend;
-
-            trend.style.color =
-                data.trend === "UP" ? "#00ff66" :
-                data.trend === "DOWN" ? "#ff4444" :
-                "gold";
-        }
-
-        // ======================
-        // CONFIDENCE
-        // ======================
-        const conf = document.getElementById("conf");
-
-        if (conf) {
-            conf.innerText = "Confidence : " + data.confidence + "%";
-        }
-
-        // ======================
-        // RSI
-        // ======================
         const rsi = document.getElementById("rsiFill");
-
-        if (rsi) {
+        if (rsi && data.rsi) {
             rsi.style.width = data.rsi + "%";
-
-            rsi.style.background =
-                data.rsi > 70 ? "red" :
-                data.rsi < 30 ? "lime" :
-                "orange";
         }
 
-        // ======================
-        // HISTORY
-        // ======================
         const log = document.getElementById("historyLog");
 
         if (log) {
-
             const item = document.createElement("div");
-
-            item.style.padding = "4px";
-            item.style.borderBottom = "1px solid #222";
-
             item.innerText =
-                `${data.signal} | RSI ${data.rsi} | P ${data.price} | ${new Date().toLocaleTimeString()}`;
+                `${data.signal} | RSI ${data.rsi} | ${data.price}`;
 
             log.prepend(item);
 
-            while (log.childNodes.length > 15) {
+            while (log.childNodes.length > 10) {
                 log.removeChild(log.lastChild);
             }
         }
 
     } catch (err) {
-        console.log("ERROR:", err);
+        console.log("SIGNAL ERROR:", err);
+
+        setText("signalBox", "SIGNAL : ERROR");
     }
 
     running = false;
@@ -190,19 +138,25 @@ async function fetchSignal() {
 
 
 // ======================
-// AUTO RUNNER
+// AUTO RUN SAFE
 // ======================
-setInterval(fetchSignal, 5000);
+setInterval(() => {
+    fetchSignal();
+}, 5000);
 
 
 // ======================
-// INIT SYSTEM (IMPORTANT FIX)
+// INIT SAFE
 // ======================
 window.onload = () => {
 
-    console.log("SYSTEM INIT");
+    console.log("INIT SAFE SYSTEM");
 
-    loadChart("FX:EURUSD");
+    try {
+        loadChart("FX:EURUSD");
+    } catch (e) {
+        console.log("INIT ERROR:", e);
+    }
 
     fetchSignal();
 };

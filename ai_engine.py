@@ -2,29 +2,30 @@ import numpy as np
 import time
 
 # ======================
-# GLOBAL CANDLE LOCK
+# GLOBAL LOCK
 # ======================
 last_signal_time = 0
 
 
 # ======================
-# EMA
+# EMA (FIXED + STABLE)
 # ======================
 def ema(data, period):
     if len(data) < period:
         return np.mean(data) if data else 0
 
     alpha = 2 / (period + 1)
-    result = data[0]
 
-    for p in data:
-        result = alpha * p + (1 - alpha) * result
+    result = np.mean(data[:period])  # 🔥 stable seed
+
+    for price in data[period:]:
+        result = alpha * price + (1 - alpha) * result
 
     return result
 
 
 # ======================
-# RSI
+# RSI (STABLE)
 # ======================
 def rsi(data, period=14):
     if len(data) < period + 1:
@@ -48,14 +49,20 @@ def rsi(data, period=14):
 
 
 # ======================
-# MACD
+# MACD (REAL STRUCTURE FIX)
 # ======================
 def macd(data):
-    return ema(data, 12) - ema(data, 26)
+    if len(data) < 30:
+        return 0
+
+    ema12 = ema(data[-100:], 12)
+    ema26 = ema(data[-100:], 26)
+
+    return ema12 - ema26
 
 
 # ======================
-# WINRATE BOOSTED AI ENGINE
+# AI ENGINE (LEVEL 7 READY)
 # ======================
 def ai_engine(prices):
     global last_signal_time
@@ -74,7 +81,7 @@ def ai_engine(prices):
 
     now = time.time()
 
-    # 🔥 60 sec candle lock (VERY IMPORTANT)
+    # 🔥 60 sec candle lock
     if now - last_signal_time < 60:
         return {
             "signal": "WAIT",
@@ -87,6 +94,9 @@ def ai_engine(prices):
             "macd": 0
         }
 
+    # ======================
+    # INDICATORS
+    # ======================
     ema20 = ema(prices, 20)
     ema50 = ema(prices, 50)
     current_rsi = rsi(prices)
@@ -113,13 +123,13 @@ def ai_engine(prices):
     # ======================
     # MACD FILTER
     # ======================
-    if current_macd > 0.03:
+    if current_macd > 0.02:
         score += 25
-    elif current_macd < -0.03:
+    elif current_macd < -0.02:
         score -= 25
 
     # ======================
-    # MOMENTUM FILTER
+    # MOMENTUM
     # ======================
     momentum = prices[-1] - prices[-20]
 
@@ -136,19 +146,18 @@ def ai_engine(prices):
     if score >= 60:
         signal = "BUY"
         trend = "UP"
-        confidence = min(95, base_conf + 10)
+        confidence = min(95, base_conf + 8)
 
     elif score <= -60:
         signal = "SELL"
         trend = "DOWN"
-        confidence = min(95, base_conf + 10)
+        confidence = min(95, base_conf + 8)
 
     else:
         signal = "WAIT"
         trend = "SIDE"
         confidence = 50
 
-    # 🔥 update candle lock only when real signal generated
     last_signal_time = now
 
     return {

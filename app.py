@@ -3,74 +3,109 @@ from flask_cors import CORS
 from flask_socketio import SocketIO
 import eventlet
 import numpy as np
-from binance import ThreadedWebsocketManager
+import random
+import threading
+import time
 
 eventlet.monkey_patch()
 
 app = Flask(__name__)
 CORS(app)
-
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ======================
-# LIVE PRICES
+# PRICE STORAGE
 # ======================
 prices = []
 
 
 # ======================
-# AI ENGINE
+# FAKE MARKET (SAFE FALLBACK)
+# ======================
+def fake_price_feed():
+    base = 100
+    noise = random.uniform(-2, 2)
+    price = base + noise + random.uniform(0, 5)
+    prices.append(price)
+
+    if len(prices) > 500:
+        prices.pop(0)
+
+
+# ======================
+# AI ENGINE (IMPROVED)
 # ======================
 def ai_engine(data):
 
     window = data[-30:]
 
+    if len(window) < 10:
+        window = data
+
+    if len(window) == 0:
+        return {
+            "price": 0,
+            "signal": "WAIT",
+            "buy": 0.5,
+            "sell": 0.5,
+            "rsi": 50
+        }
+
     momentum = window[-1] - window[0]
-    volatility = np.std(window)
+    volatility = np.std(window) if len(window) > 1 else 0
     mean_price = np.mean(window)
 
     buy = 50
     sell = 50
 
-    buy += momentum * 2
-    sell -= momentum * 2
+    # momentum influence
+    buy += momentum * 4
+    sell -= momentum * 4
 
-    if volatility > 2:
-        buy -= 5
-        sell -= 5
+    # volatility penalty
+    if volatility > 1.5:
+        buy -= 8
+        sell -= 8
 
+    # trend bias
     if window[-1] > mean_price:
-        buy += 10
+        buy += 12
     else:
-        sell += 10
+        sell += 12
 
-    total = buy + sell
-    buy_prob = buy / total
-    sell_prob = sell / total
-
-    if buy_prob > 0.6:
+    # decision engine
+    if buy > sell + 5:
         signal = "BUY"
-    elif sell_prob > 0.6:
+    elif sell > buy + 5:
         signal = "SELL"
     else:
         signal = "WAIT"
 
-    rsi = 50 + (buy_prob - sell_prob) * 50
+    rsi = 50 + (buy - sell)
 
     return {
         "price": round(window[-1], 2),
         "signal": signal,
-        "buy": round(buy_prob, 2),
-        "sell": round(sell_prob, 2),
+        "buy": round(buy / 100, 2),
+        "sell": round(sell / 100, 2),
         "rsi": round(rsi, 2)
     }
 
 
 # ======================
-# EMIT REALTIME SIGNAL
+# BACKGROUND LOOP (IMPORTANT)
+# ======================
+def price_loop():
+    while True:
+        fake_price_feed()
+        time.sleep(2)
+
+
+# ======================
+# EMIT SIGNAL (SOCKET READY)
 # ======================
 def emit_signal():
-    if len(prices) < 30:
+    if len(prices) < 10:
         return
 
     data = ai_engine(prices)
@@ -78,36 +113,10 @@ def emit_signal():
     socketio.emit("update", {
         "price": data["price"],
         "signal": data["signal"],
-        "rsi": data["rsi"],
         "confidence": round(data["buy"] * 100, 2),
-        "trend": "UP" if data["signal"] == "BUY" else "DOWN"
+        "trend": "UP" if data["signal"] == "BUY" else "DOWN",
+        "rsi": data["rsi"]
     })
-
-
-# ======================
-# BINANCE STREAM
-# ======================
-def handle_message(msg):
-    global prices
-
-    price = float(msg['c'])
-    prices.append(price)
-
-    if len(prices) > 500:
-        prices.pop(0)
-
-    if len(prices) > 30:
-        emit_signal()
-
-
-def start_stream():
-    twm = ThreadedWebsocketManager()
-    twm.start()
-
-    twm.start_symbol_ticker_socket(
-        callback=handle_message,
-        symbol="BTCUSDT"
-    )
 
 
 # ======================
@@ -115,18 +124,18 @@ def start_stream():
 # ======================
 @app.route("/")
 def home():
-    return "AI Trading Pro Running ✔"
+    return "AI Trading Pro v5 Running ✔"
 
 
-# ✅ FIXED API ROUTE (THIS WAS MISSING BEFORE)
+# ✅ MAIN FIXED API
 @app.route("/api/signal")
 def signal():
 
-    if len(prices) < 30:
+    if len(prices) < 5:
         return jsonify({
-            "signal": "WAIT",
             "price": 0,
-            "confidence": 0,
+            "signal": "WAIT",
+            "confidence": 50,
             "trend": "SIDE",
             "rsi": 50
         })
@@ -156,8 +165,11 @@ def connect():
 
 
 # ======================
-# RUN
+# START SERVER
 # ======================
 if __name__ == "__main__":
-    socketio.start_background_task(start_stream)
+
+    # start fake market
+    threading.Thread(target=price_loop).start()
+
     socketio.run(app, host="0.0.0.0", port=10000)

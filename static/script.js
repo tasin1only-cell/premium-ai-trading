@@ -1,12 +1,13 @@
-console.log("LEVEL 6C PRO JS LOADED");
+console.log("LEVEL 7 AI TRADING JS LOADED");
 
 // ======================
-// API
+// API (AUTO SAFE)
 // ======================
-const API_URL = "https://premium-ai-trading.onrender.com/api/signal";
+const API_URL = "/api/signal";
+const CANDLE_URL = "/api/candles";
 
 // ======================
-// STATE CONTROL
+// STATE
 // ======================
 let running = false;
 let started = false;
@@ -22,7 +23,7 @@ setInterval(() => {
 
 
 // ======================
-// VISUAL CANDLE TIMER (SYNC IMPROVED)
+// CANDLE TIMER UI
 // ======================
 setInterval(() => {
     const sec = new Date().getSeconds();
@@ -42,6 +43,21 @@ setInterval(() => {
 
 
 // ======================
+// REAL CANDLE DEBUG (LEVEL 7)
+// ======================
+async function loadCandles() {
+    try {
+        const res = await fetch(CANDLE_URL);
+        const data = await res.json();
+
+        console.log("LIVE CANDLES:", data.slice(-5));
+    } catch (err) {
+        console.log("CANDLE ERROR:", err);
+    }
+}
+
+
+// ======================
 // TRADINGVIEW CHART
 // ======================
 let widget = null;
@@ -49,7 +65,6 @@ let widget = null;
 function loadChart(symbol = "FX:EURUSD") {
     try {
         const chart = document.getElementById("tradingview_chart");
-
         if (!chart) return;
 
         chart.innerHTML = "";
@@ -74,7 +89,7 @@ function loadChart(symbol = "FX:EURUSD") {
 
 
 // ======================
-// ASSET CHANGE FIX
+// ASSET SWITCH
 // ======================
 function changeAsset() {
 
@@ -94,7 +109,7 @@ function changeAsset() {
 
 
 // ======================
-// UI UPDATE ENGINE (CLEAN)
+// UI UPDATE
 // ======================
 function updateUI(data) {
 
@@ -144,7 +159,7 @@ function updateUI(data) {
             "orange";
     }
 
-    // HISTORY
+    // HISTORY LOG
     if (log) {
 
         const item = document.createElement("div");
@@ -153,7 +168,7 @@ function updateUI(data) {
         item.style.borderBottom = "1px solid #222";
 
         item.innerText =
-            `${data.signal} | RSI ${data.rsi} | P ${data.price} | ${new Date().toLocaleTimeString()}`;
+            `${data.signal} | RSI ${data.rsi} | Price ${data.price} | ${new Date().toLocaleTimeString()}`;
 
         log.prepend(item);
 
@@ -165,7 +180,7 @@ function updateUI(data) {
 
 
 // ======================
-// SIGNAL ENGINE (STABLE PRO)
+// SIGNAL ENGINE (LEVEL 7 SYNC)
 // ======================
 async function generateSignal() {
 
@@ -174,16 +189,18 @@ async function generateSignal() {
     running = true;
 
     try {
-
         const res = await fetch(API_URL);
 
         if (!res.ok) throw new Error("API ERROR");
 
         const data = await res.json();
 
-        console.log("DATA:", data);
+        console.log("SIGNAL DATA:", data);
 
         updateUI(data);
+
+        // 🔥 optional candle debug
+        loadCandles();
 
     } catch (err) {
         console.log("ERROR:", err);
@@ -191,12 +208,12 @@ async function generateSignal() {
 
     setTimeout(() => {
         running = false;
-    }, 1200);
+    }, 2000);
 }
 
 
 // ======================
-// AUTO START (FIXED)
+// START BOT
 // ======================
 function startBot() {
 
@@ -206,7 +223,8 @@ function startBot() {
 
     generateSignal();
 
-    setInterval(generateSignal, 60000); // 1 minute candle sync
+    // 🔥 sync with backend candle lock (60s)
+    setInterval(generateSignal, 60000);
 }
 
 
@@ -215,7 +233,7 @@ function startBot() {
 // ======================
 window.onload = () => {
 
-    console.log("PAGE LOADED");
+    console.log("LEVEL 7 DASHBOARD READY");
 
     loadChart("FX:EURUSD");
 

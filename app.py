@@ -8,13 +8,25 @@ app = Flask(__name__)
 CORS(app)
 
 # ======================
-# SIMULATED MARKET DATA
+# MARKET DATA (SIMULATED)
 # ======================
 prices = [100 + random.uniform(-1, 1) for _ in range(300)]
 
 
 # ======================
-# FEATURE ENGINE
+# UPDATE PRICE
+# ======================
+def update_price():
+    global prices
+    change = random.uniform(-1.2, 1.2)
+    prices.append(prices[-1] + change)
+
+    if len(prices) > 500:
+        prices.pop(0)
+
+
+# ======================
+# FEATURES
 # ======================
 def make_features(data):
     X = []
@@ -22,18 +34,17 @@ def make_features(data):
     for i in range(20, len(data)):
         window = data[i-20:i]
 
-        rsi = sum(max(0, window[j]-window[j-1]) for j in range(1,20))
-        ema = np.mean(window)
         momentum = window[-1] - window[0]
         volatility = np.std(window)
+        mean_price = np.mean(window)
 
-        X.append([rsi, ema, momentum, volatility])
+        X.append([momentum, volatility, mean_price])
 
     return np.array(X)
 
 
 # ======================
-# LABEL GENERATION (TRAINING DATA)
+# LABELS
 # ======================
 def make_labels(data):
     y = []
@@ -54,40 +65,27 @@ def train_model(data):
     X = make_features(data)
     y = make_labels(data)
 
-    model = RandomForestClassifier(n_estimators=50)
+    model = RandomForestClassifier(n_estimators=60, random_state=42)
     model.fit(X, y)
 
     return model
 
 
 # ======================
-# UPDATE PRICE
-# ======================
-def update_price():
-    global prices
-    change = random.uniform(-1.5, 1.5)
-    prices.append(prices[-1] + change)
-
-    if len(prices) > 400:
-        prices.pop(0)
-
-
-# ======================
-# GET CURRENT FEATURE
+# CURRENT FEATURE
 # ======================
 def current_feature(data):
     window = data[-20:]
 
-    rsi = sum(max(0, window[i]-window[i-1]) for i in range(1,20))
-    ema = np.mean(window)
     momentum = window[-1] - window[0]
     volatility = np.std(window)
+    mean_price = np.mean(window)
 
-    return np.array([[rsi, ema, momentum, volatility]])
+    return np.array([[momentum, volatility, mean_price]])
 
 
 # ======================
-# ROUTE
+# MAIN API
 # ======================
 @app.route("/api/signal")
 def signal():
@@ -102,24 +100,38 @@ def signal():
     prob = model.predict_proba(X)[0]
 
     signal = "BUY" if prediction == 1 else "SELL"
-    confidence = float(max(prob)) * 100
+    confidence = round(float(max(prob)) * 100, 2)
+
+    trend = "UP" if prices[-1] > prices[-10] else "DOWN"
 
     return jsonify({
         "price": round(prices[-1], 2),
         "signal": signal,
-        "confidence": round(confidence, 2),
-        "buy_prob": round(prob[1], 2),
-        "sell_prob": round(prob[0], 2)
+        "confidence": confidence,
+        "buy_probability": round(prob[1], 2),
+        "sell_probability": round(prob[0], 2),
+        "trend": trend
     })
 
 
+# ======================
+# HISTORY API
+# ======================
 @app.route("/api/history")
 def history():
     return jsonify(prices)
 
 
 # ======================
-# RUN
+# HEALTH CHECK
+# ======================
+@app.route("/")
+def home():
+    return "Level 3 AI Trading Engine Running ✔"
+
+
+# ======================
+# RUN (RENDER READY)
 # ======================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

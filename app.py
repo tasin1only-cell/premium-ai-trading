@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, render_template, jsonify
 from flask_cors import CORS
 import numpy as np
 import threading
@@ -12,7 +12,6 @@ CORS(app)
 # PRICE STORE
 # ======================
 prices = []
-
 
 # ======================
 # PRICE FEED
@@ -31,7 +30,6 @@ def price_loop():
 
         time.sleep(1.0)
 
-
 # ======================
 # EMA
 # ======================
@@ -46,7 +44,6 @@ def ema(data, period):
         result = alpha * p + (1 - alpha) * result
 
     return result
-
 
 # ======================
 # RSI
@@ -71,7 +68,6 @@ def rsi(data, period=14):
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
-
 # ======================
 # MACD
 # ======================
@@ -80,9 +76,8 @@ def macd(data):
     ema26 = ema(data, 26)
     return ema12 - ema26
 
-
 # ======================
-# AI ENGINE (ACTIVE MODE)
+# AI ENGINE
 # ======================
 def ai_engine():
 
@@ -105,33 +100,25 @@ def ai_engine():
 
     score = 0
 
-    # ======================
-    # EMA (SOFT WEIGHT)
-    # ======================
+    # EMA
     if ema20 > ema50:
         score += 30
     else:
         score -= 30
 
-    # ======================
-    # RSI (ACTIVE ZONE)
-    # ======================
+    # RSI
     if current_rsi < 48:
         score += 25
     elif current_rsi > 52:
         score -= 25
 
-    # ======================
-    # MACD (MORE SENSITIVE)
-    # ======================
+    # MACD
     if current_macd > 0.02:
         score += 30
     elif current_macd < -0.02:
         score -= 30
 
-    # ======================
-    # MOMENTUM BOOST
-    # ======================
+    # Momentum
     if len(prices) > 10:
         momentum = prices[-1] - prices[-10]
 
@@ -140,9 +127,7 @@ def ai_engine():
         elif momentum < -0.3:
             score -= 20
 
-    # ======================
-    # DECISION (ACTIVE MODE)
-    # ======================
+    # Decision
     if score > 10:
         signal = "BUY"
         trend = "UP"
@@ -169,24 +154,21 @@ def ai_engine():
         "macd": round(current_macd, 4)
     }
 
+# ======================
+# ROUTES (FIXED)
+# ======================
 
-# ======================
-# ROUTES
-# ======================
 @app.route("/")
 def home():
-    return "Level 6A ACTIVE AI RUNNING ✔"
-
+    return render_template("index.html")
 
 @app.route("/api/signal")
 def signal():
     return jsonify(ai_engine())
 
-
 @app.route("/api/history")
 def history():
     return jsonify(prices[-100:])
-
 
 @app.route("/debug")
 def debug():
@@ -195,12 +177,10 @@ def debug():
         "last_price": prices[-1] if prices else None
     }
 
-
 # ======================
-# START FEED
+# START BACKGROUND THREAD
 # ======================
 threading.Thread(target=price_loop, daemon=True).start()
-
 
 # ======================
 # RUN

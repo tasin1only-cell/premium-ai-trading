@@ -16,19 +16,32 @@ const API_URL =
 function updateClock(){
 
 const clock =
-document.getElementById("clock");
+
+document.getElementById(
+
+"clock"
+
+);
 
 if(clock){
 
 clock.innerText =
 
-new Date().toLocaleTimeString();
+new Date()
+
+.toLocaleTimeString();
 
 }
 
 }
 
-setInterval(updateClock,1000);
+setInterval(
+
+updateClock,
+
+1000
+
+);
 
 updateClock();
 
@@ -44,7 +57,11 @@ setInterval(()=>{
 
 candleSec--;
 
-if(candleSec < 0){
+if(
+
+candleSec < 0
+
+){
 
 candleSec = 59;
 
@@ -66,13 +83,27 @@ candle.innerText =
 
 +
 
-String(candleSec)
+String(
 
-.padStart(2,"0");
+candleSec
+
+)
+
+.padStart(
+
+2,
+
+"0"
+
+);
 
 }
 
-},1000);
+},
+
+1000
+
+);
 
 
 
@@ -98,11 +129,17 @@ document.getElementById(
 
 );
 
-if(!chart) return;
+if(!chart)
 
-chart.innerHTML = "";
+return;
 
-widget = new TradingView.widget({
+
+chart.innerHTML="";
+
+
+widget =
+
+new TradingView.widget({
 
 container_id:
 
@@ -163,19 +200,32 @@ document.getElementById(
 
 const map = {
 
-"EUR/USD":"FX:EURUSD",
+"EUR/USD":
 
-"GBP/USD":"FX:GBPUSD",
+"FX:EURUSD",
 
-"USD/JPY":"FX:USDJPY",
+"GBP/USD":
 
-"BTC/USD":"BINANCE:BTCUSDT",
+"FX:GBPUSD",
 
-"ETH/USD":"BINANCE:ETHUSDT",
+"USD/JPY":
 
-"XAU/USD":"OANDA:XAUUSD"
+"FX:USDJPY",
+
+"BTC/USD":
+
+"BINANCE:BTCUSDT",
+
+"ETH/USD":
+
+"BINANCE:ETHUSDT",
+
+"XAU/USD":
+
+"OANDA:XAUUSD"
 
 };
+
 
 loadChart(
 
@@ -219,12 +269,6 @@ loadChart(
 
 async function generateSignal(){
 
-console.log(
-
-"BUTTON CLICKED"
-
-);
-
 try{
 
 document.getElementById(
@@ -240,11 +284,39 @@ const res =
 
 await fetch(
 
-API_URL
+API_URL,
+
+{
+
+method:"GET",
+
+headers:{
+
+"Accept":
+
+"application/json"
+
+}
+
+}
 
 );
 
-if(!res.ok){
+
+console.log(
+
+"STATUS:",
+
+res.status
+
+);
+
+
+if(
+
+!res.ok
+
+){
 
 throw new Error(
 
@@ -259,7 +331,10 @@ const data =
 
 await res.json();
 
+
 console.log(
+
+"DATA:",
 
 data
 
@@ -270,7 +345,7 @@ data
 // TREND
 // =================
 
-const trendBox =
+const trend =
 
 document.getElementById(
 
@@ -278,19 +353,24 @@ document.getElementById(
 
 );
 
-trendBox.innerText =
+trend.innerText =
 
 "TREND: "
 
 +
 
-(data.trend
+(
+
+data.trend
 
 ||
 
-"--");
+"--"
 
-trendBox.style.color =
+);
+
+
+trend.style.color =
 
 data.trend==="UP"
 
@@ -312,6 +392,7 @@ data.trend==="DOWN"
 
 
 
+
 // =================
 // SIGNAL
 // =================
@@ -326,11 +407,15 @@ document.getElementById(
 
 +
 
-(data.signal
+(
+
+data.signal
 
 ||
 
-"WAIT");
+"WAIT"
+
+);
 
 
 
@@ -349,11 +434,15 @@ document.getElementById(
 
 +
 
-(data.confidence
+(
+
+data.confidence
 
 ??
 
-"--")
+"--"
+
+)
 
 +
 
@@ -418,6 +507,7 @@ data.rsi < 30
 "orange";
 
 }
+
 
 
 
@@ -489,10 +579,11 @@ catch(err){
 
 console.log(
 
+"ERROR:",
+
 err
 
 );
-
 
 document.getElementById(
 
@@ -509,8 +600,8 @@ document.getElementById(
 
 ).innerText =
 
-"Confidence : --";
+err.message;
 
 }
 
-}
+ }

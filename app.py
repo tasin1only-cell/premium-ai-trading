@@ -6,14 +6,13 @@ app = Flask(__name__)
 CORS(app)
 
 # ======================
-# MARKET SIMULATION DATA
+# MARKET DATA
 # ======================
-price = 100.0
-history = [100 + random.uniform(-1, 1) for _ in range(50)]
+history = [100 + random.uniform(-1, 1) for _ in range(60)]
 
 
 # ======================
-# RSI CALCULATION
+# RSI CALCULATOR
 # ======================
 def calculate_rsi(data):
     gain = 0
@@ -50,8 +49,8 @@ def get_trend(data):
 def update_price():
     global history
 
-    move = random.uniform(-1.8, 1.8)
-    new_price = history[-1] + move
+    change = random.uniform(-1.5, 1.5)
+    new_price = history[-1] + change
 
     history.append(new_price)
 
@@ -60,7 +59,7 @@ def update_price():
 
 
 # ======================
-# AI BRAIN ENGINE
+# AI BRAIN ENGINE (FIXED)
 # ======================
 def ai_engine(data):
 
@@ -70,6 +69,7 @@ def ai_engine(data):
     signal = "WAIT"
     confidence = 50
 
+    # STRONG LOGIC
     if trend == "UP" and rsi < 70:
         signal = "BUY"
         confidence = 75 + random.randint(0, 20)
@@ -90,11 +90,12 @@ def ai_engine(data):
         signal = "WAIT"
         confidence = 40 + random.randint(0, 15)
 
+    # IMPORTANT: FIXED TYPES (NO STRING BUG)
     return {
         "trend": trend,
         "rsi": round(rsi, 2),
         "signal": signal,
-        "confidence": confidence,
+        "confidence": int(confidence),
         "price": round(data[-1], 2)
     }
 
@@ -104,7 +105,7 @@ def ai_engine(data):
 # ======================
 @app.route("/")
 def home():
-    return "AI Trading Brain v3 Running ✔"
+    return "AI Trading Brain v3.1 Running ✔"
 
 
 @app.route("/api/signal")
@@ -119,7 +120,7 @@ def get_history():
 
 
 # ======================
-# RENDER SAFE RUN
+# RUN SERVER
 # ======================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

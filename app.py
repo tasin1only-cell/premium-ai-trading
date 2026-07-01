@@ -1,26 +1,26 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
+from flask_cors import CORS
 import random
-import math
 
 app = Flask(__name__)
+CORS(app)
 
 # ======================
-# SIMPLE MARKET SIM (replace later with real API)
+# MARKET SIMULATION DATA
 # ======================
 price = 100.0
-
 history = [100 + random.uniform(-1, 1) for _ in range(50)]
 
 
 # ======================
-# RSI CALC
+# RSI CALCULATION
 # ======================
-def rsi(data):
+def calculate_rsi(data):
     gain = 0
     loss = 0
 
     for i in range(1, len(data)):
-        diff = data[i] - data[i-1]
+        diff = data[i] - data[i - 1]
         if diff > 0:
             gain += diff
         else:
@@ -31,9 +31,9 @@ def rsi(data):
 
 
 # ======================
-# TREND
+# TREND ENGINE
 # ======================
-def trend(data):
+def get_trend(data):
     if len(data) < 10:
         return "SIDE"
 
@@ -45,52 +45,68 @@ def trend(data):
 
 
 # ======================
-# AI ENGINE v3
+# PRICE UPDATE ENGINE
+# ======================
+def update_price():
+    global history
+
+    move = random.uniform(-1.8, 1.8)
+    new_price = history[-1] + move
+
+    history.append(new_price)
+
+    if len(history) > 100:
+        history.pop(0)
+
+
+# ======================
+# AI BRAIN ENGINE
 # ======================
 def ai_engine(data):
 
-    t = trend(data)
-    r = rsi(data)
+    trend = get_trend(data)
+    rsi = calculate_rsi(data)
 
     signal = "WAIT"
     confidence = 50
 
-    if t == "UP" and r < 70:
+    if trend == "UP" and rsi < 70:
         signal = "BUY"
         confidence = 75 + random.randint(0, 20)
 
-    elif t == "DOWN" and r > 30:
+    elif trend == "DOWN" and rsi > 30:
         signal = "SELL"
         confidence = 75 + random.randint(0, 20)
+
+    elif rsi < 25:
+        signal = "STRONG BUY"
+        confidence = 85 + random.randint(0, 10)
+
+    elif rsi > 75:
+        signal = "STRONG SELL"
+        confidence = 85 + random.randint(0, 10)
 
     else:
         signal = "WAIT"
         confidence = 40 + random.randint(0, 15)
 
     return {
-        "trend": t,
-        "rsi": round(r, 2),
+        "trend": trend,
+        "rsi": round(rsi, 2),
         "signal": signal,
         "confidence": confidence,
-        "price": data[-1]
+        "price": round(data[-1], 2)
     }
 
 
 # ======================
-# UPDATE MARKET
+# ROUTES
 # ======================
-def update_price():
-    global history
-    move = random.uniform(-1.5, 1.5)
-    new_price = history[-1] + move
-    history.append(new_price)
-    if len(history) > 100:
-        history.pop(0)
+@app.route("/")
+def home():
+    return "AI Trading Brain v3 Running ✔"
 
 
-# ======================
-# API
-# ======================
 @app.route("/api/signal")
 def get_signal():
     update_price()
@@ -102,5 +118,8 @@ def get_history():
     return jsonify(history)
 
 
+# ======================
+# RENDER SAFE RUN
+# ======================
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)

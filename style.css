@@ -1,89 +1,118 @@
-body {
-margin: 0;
-font-family: Arial;
-background: #0a0f1c;
-color: white;
-overflow: hidden;
+body{
+margin:0;
+padding:20px;
+background: radial-gradient(circle,#0a0a0a,#050505);
+font-family:Arial;
+color:white;
+display:flex;
+justify-content:center;
 }
 
-.bg {
-position: absolute;
-width: 100%;
-height: 100%;
-background: radial-gradient(circle at top, #00ff88 0%, transparent 40%),
-radial-gradient(circle at bottom, #0066ff 0%, transparent 40%);
-filter: blur(80px);
-z-index: -1;
+.container{
+width:420px;
+background:#111;
+padding:20px;
+border-radius:20px;
+border:1px solid gold;
+box-shadow:0 0 30px rgba(255,215,0,0.25);
+
+/* 🔥 IMPORTANT FIX */
+display:flex;
+flex-direction:column;
+gap:12px;
+overflow:hidden;
 }
 
-.container {
-text-align: center;
-padding: 20px;
+h2{
+text-align:center;
+color:gold;
 }
 
-h1 {
-margin-top: 20px;
-color: #00ff88;
+/* FIXED BLOCKS */
+.info-card,.signal-card,.history{
+background:#171717;
+padding:15px;
+border-radius:12px;
+border:1px solid rgba(255,215,0,0.1);
 }
 
-.sub {
-opacity: 0.7;
-margin-bottom: 20px;
+/* 🔥 CHART FIX (MOST IMPORTANT) */
+.chart-card{
+width:100%;
+height:320px;
+background:#0f0f0f;
+border-radius:12px;
+border:1px solid gold;
+overflow:hidden;
+
+/* FIX TRADINGVIEW OVERFLOW */
+position:relative;
 }
 
-.card {
-background: rgba(255,255,255,0.05);
-backdrop-filter: blur(10px);
-padding: 20px;
-border-radius: 20px;
-box-shadow: 0 0 20px rgba(0,255,136,0.2);
+#tradingview_chart{
+width:100%;
+height:100%;
+position:absolute;
+top:0;
+left:0;
 }
 
-.top {
-display: flex;
-justify-content: space-between;
-align-items: center;
+/* SELECT FIX */
+select{
+width:100%;
+padding:10px;
+background:#0d0d0d;
+color:white;
+border:1px solid gold;
+border-radius:8px;
 }
 
-.badge {
-background: #00ff88;
-color: black;
-padding: 5px 10px;
-border-radius: 10px;
-font-weight: bold;
+/* BUTTON */
+button{
+width:100%;
+padding:14px;
+background:gold;
+border:none;
+border-radius:10px;
+font-weight:bold;
+cursor:pointer;
 }
 
-.grid {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 10px;
-margin-top: 20px;
+button:hover{
+transform:scale(1.02);
 }
 
-.box {
-background: rgba(255,255,255,0.05);
-padding: 15px;
-border-radius: 12px;
+/* TEXT */
+#clock{color:gold;font-size:22px;font-weight:bold;}
+#signalBox{color:#00ff66;}
+#conf{color:gold;}
+#candle{color:#ffcc00;}
+
+.trend-box{
+text-align:center;
+padding:10px;
+border-radius:10px;
+font-weight:bold;
+background:#222;
 }
 
-.signal {
-margin-top: 20px;
-font-size: 22px;
-font-weight: bold;
-color: #ffcc00;
+.rsi-bar{
+width:100%;
+height:12px;
+background:#333;
+border-radius:10px;
+overflow:hidden;
 }
 
-button {
-margin-top: 20px;
-padding: 12px;
-width: 100%;
-border: none;
-border-radius: 12px;
-background: #00ff88;
-font-weight: bold;
-cursor: pointer;
+#rsiFill{
+height:100%;
+width:50%;
+background:orange;
+transition:0.5s;
 }
 
-button:active {
-transform: scale(0.97);
+.history{
+font-size:12px;
+max-height:120px;
+overflow:auto;
 }

@@ -9,19 +9,19 @@ app = Flask(__name__)
 CORS(app)
 
 # ======================
-# PRICE STORAGE
+# GLOBAL PRICE STORE
 # ======================
 prices = []
 
 
 # ======================
-# PRICE FEED (SIMULATION / SAFE FOR RENDER)
+# LIVE PRICE FEED (SIMULATED)
 # ======================
 def price_loop():
     price = 100
 
     while True:
-        move = random.uniform(-1.5, 1.5)
+        move = random.uniform(-1.2, 1.2)
         price += move
 
         prices.append(price)
@@ -29,15 +29,15 @@ def price_loop():
         if len(prices) > 500:
             prices.pop(0)
 
-        time.sleep(1.5)
+        time.sleep(1.2)
 
 
 # ======================
-# EMA
+# EMA FUNCTION
 # ======================
 def ema(data, period):
     if len(data) < period:
-        return np.mean(data)
+        return np.mean(data) if data else 0
 
     alpha = 2 / (period + 1)
     result = data[0]
@@ -49,7 +49,7 @@ def ema(data, period):
 
 
 # ======================
-# RSI
+# RSI FUNCTION
 # ======================
 def rsi(data, period=14):
     if len(data) < period + 1:
@@ -60,7 +60,6 @@ def rsi(data, period=14):
 
     for i in range(1, period + 1):
         diff = data[-i] - data[-i - 1]
-
         if diff > 0:
             gains.append(diff)
         else:
@@ -70,12 +69,11 @@ def rsi(data, period=14):
     avg_loss = np.mean(losses) if losses else 0.01
 
     rs = avg_gain / avg_loss
-
     return 100 - (100 / (1 + rs))
 
 
 # ======================
-# MACD (simple)
+# MACD FUNCTION
 # ======================
 def macd(data):
     ema12 = ema(data, 12)
@@ -84,7 +82,7 @@ def macd(data):
 
 
 # ======================
-# AI ENGINE (FIXED LOGIC)
+# AI ENGINE (FIXED & BALANCED)
 # ======================
 def ai_engine():
 
@@ -93,7 +91,7 @@ def ai_engine():
             "signal": "WAIT",
             "confidence": 50,
             "trend": "SIDE",
-            "price": 0,
+            "price": prices[-1] if prices else 0,
             "rsi": 50,
             "ema20": 0,
             "ema50": 0,
@@ -108,50 +106,56 @@ def ai_engine():
     score = 0
 
     # ======================
-    # EMA STRONG SIGNAL
+    # EMA SIGNAL
     # ======================
     if ema20 > ema50:
-        score += 40
+        score += 35
     else:
-        score -= 40
+        score -= 35
 
     # ======================
-    # RSI BALANCED SIGNAL
+    # RSI SIGNAL
     # ======================
     if current_rsi < 45:
-        score += 25
+        score += 20
     elif current_rsi > 55:
-        score -= 25
+        score -= 20
 
     # ======================
     # MACD SIGNAL
     # ======================
     if current_macd > 0:
-        score += 30
+        score += 25
     else:
-        score -= 30
+        score -= 25
+
+    # ======================
+    # MOMENTUM (IMPORTANT FIX)
+    # ======================
+    if len(prices) > 10:
+        momentum = prices[-1] - prices[-10]
+        if momentum > 0.5:
+            score += 20
+        elif momentum < -0.5:
+            score -= 20
 
     # ======================
     # DECISION ENGINE
     # ======================
-    if score > 15:
+    if score > 20:
         signal = "BUY"
         trend = "UP"
         confidence = min(95, 55 + abs(score))
 
-    elif score < -15:
+    elif score < -20:
         signal = "SELL"
         trend = "DOWN"
         confidence = min(95, 55 + abs(score))
 
     else:
+        signal = "WAIT"
         trend = "SIDE"
-        confidence = 50
-
-        if len(prices) > 0 and prices[-1] > ema20:
-            signal = "BUY"
-        else:
-            signal = "SELL"
+        confidence = 50 + abs(score) * 2
 
     return {
         "signal": signal,
@@ -170,7 +174,7 @@ def ai_engine():
 # ======================
 @app.route("/")
 def home():
-    return "AI Trading Pro Level 6A FIXED RUNNING ✔"
+    return "Level 6A FULL STABLE AI RUNNING ✔"
 
 
 @app.route("/api/signal")
@@ -183,6 +187,14 @@ def history():
     return jsonify(prices[-100:])
 
 
+@app.route("/debug")
+def debug():
+    return {
+        "price_count": len(prices),
+        "last_price": prices[-1] if prices else None
+    }
+
+
 # ======================
 # START BACKGROUND THREAD
 # ======================
@@ -190,7 +202,7 @@ threading.Thread(target=price_loop, daemon=True).start()
 
 
 # ======================
-# RUN
+# RUN SERVER
 # ======================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

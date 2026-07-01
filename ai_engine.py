@@ -8,15 +8,14 @@ last_signal_time = 0
 
 
 # ======================
-# EMA (FIXED + STABLE)
+# EMA
 # ======================
 def ema(data, period):
     if len(data) < period:
         return np.mean(data) if data else 0
 
     alpha = 2 / (period + 1)
-
-    result = np.mean(data[:period])  # 🔥 stable seed
+    result = np.mean(data[:period])
 
     for price in data[period:]:
         result = alpha * price + (1 - alpha) * result
@@ -25,14 +24,13 @@ def ema(data, period):
 
 
 # ======================
-# RSI (STABLE)
+# RSI
 # ======================
 def rsi(data, period=14):
     if len(data) < period + 1:
         return 50
 
-    gains = []
-    losses = []
+    gains, losses = [], []
 
     for i in range(1, period + 1):
         diff = data[-i] - data[-i - 1]
@@ -49,20 +47,20 @@ def rsi(data, period=14):
 
 
 # ======================
-# MACD (REAL STRUCTURE FIX)
+# MACD
 # ======================
 def macd(data):
     if len(data) < 30:
         return 0
 
-    ema12 = ema(data[-100:], 12)
-    ema26 = ema(data[-100:], 26)
+    ema12 = ema(data, 12)
+    ema26 = ema(data, 26)
 
     return ema12 - ema26
 
 
 # ======================
-# AI ENGINE (LEVEL 7 READY)
+# MAIN AI ENGINE (OPTION 1)
 # ======================
 def ai_engine(prices):
     global last_signal_time
@@ -81,19 +79,6 @@ def ai_engine(prices):
 
     now = time.time()
 
-    # 🔥 60 sec candle lock
-    if now - last_signal_time < 60:
-        return {
-            "signal": "WAIT",
-            "confidence": 50,
-            "trend": "SIDE",
-            "price": round(prices[-1], 2),
-            "rsi": 50,
-            "ema20": 0,
-            "ema50": 0,
-            "macd": 0
-        }
-
     # ======================
     # INDICATORS
     # ======================
@@ -104,33 +89,21 @@ def ai_engine(prices):
 
     score = 0
 
-    # ======================
-    # TREND FILTER
-    # ======================
     if ema20 > ema50:
         score += 30
     else:
         score -= 30
 
-    # ======================
-    # RSI FILTER
-    # ======================
     if current_rsi < 45:
         score += 25
     elif current_rsi > 55:
         score -= 25
 
-    # ======================
-    # MACD FILTER
-    # ======================
     if current_macd > 0.02:
         score += 25
     elif current_macd < -0.02:
         score -= 25
 
-    # ======================
-    # MOMENTUM
-    # ======================
     momentum = prices[-1] - prices[-20]
 
     if momentum > 0.5:
@@ -138,27 +111,31 @@ def ai_engine(prices):
     elif momentum < -0.5:
         score -= 20
 
-    # ======================
-    # FINAL DECISION
-    # ======================
     base_conf = 55 + abs(score)
 
+    # ======================
+    # DECISION
+    # ======================
     if score >= 60:
         signal = "BUY"
         trend = "UP"
         confidence = min(95, base_conf + 8)
+
+        # 🔥 ONLY BUY/SELL LOCK
+        last_signal_time = now
 
     elif score <= -60:
         signal = "SELL"
         trend = "DOWN"
         confidence = min(95, base_conf + 8)
 
+        # 🔥 ONLY BUY/SELL LOCK
+        last_signal_time = now
+
     else:
         signal = "WAIT"
         trend = "SIDE"
         confidence = 50
-
-    last_signal_time = now
 
     return {
         "signal": signal,

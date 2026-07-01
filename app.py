@@ -1,122 +1,131 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-import random
+from flask_socketio import SocketIO
+import eventlet
 import numpy as np
+from binance import ThreadedWebsocketManager
+
+eventlet.monkey_patch()
 
 app = Flask(__name__)
 CORS(app)
 
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 # ======================
-# LIVE MARKET SIMULATION
+# REAL MARKET DATA
 # ======================
-prices = [100 + random.uniform(-1, 1) for _ in range(200)]
+prices = []
 
 
 # ======================
-# LIVE PRICE UPDATE
+# BINANCE LIVE FEED
 # ======================
-def update_price():
+def handle_message(msg):
     global prices
-    change = random.uniform(-1.5, 1.5)
-    new_price = prices[-1] + change
-    prices.append(new_price)
+
+    price = float(msg['c'])  # current price
+
+    prices.append(price)
 
     if len(prices) > 500:
         prices.pop(0)
 
+    if len(prices) > 30:
+        emit_signal()
+
 
 # ======================
-# LIVE FEATURES
+# AI ENGINE
 # ======================
-def get_features(data):
+def ai_engine(data):
+
     window = data[-30:]
 
     momentum = window[-1] - window[0]
     volatility = np.std(window)
     mean_price = np.mean(window)
 
-    return momentum, volatility, mean_price
+    buy = 50
+    sell = 50
 
+    buy += momentum * 2
+    sell -= momentum * 2
 
-# ======================
-# ADAPTIVE AI ENGINE (LEVEL 4)
-# ======================
-def ai_engine(data):
+    if volatility > 2:
+        buy -= 5
+        sell -= 5
 
-    momentum, volatility, mean_price = get_features(data)
-    price = data[-1]
-
-    buy_score = 50
-    sell_score = 50
-
-    # momentum effect
-    buy_score += momentum * 2
-    sell_score -= momentum * 2
-
-    # volatility filter (avoid chaos)
-    if volatility > 2.5:
-        buy_score -= 5
-        sell_score -= 5
-
-    # price trend
-    if price > mean_price:
-        buy_score += 10
+    if window[-1] > mean_price:
+        buy += 10
     else:
-        sell_score += 10
+        sell += 10
 
-    # normalize
-    total = buy_score + sell_score
-    buy_prob = buy_score / total
-    sell_prob = sell_score / total
+    total = buy + sell
+    buy_prob = buy / total
+    sell_prob = sell / total
 
-    if buy_prob > 0.60:
+    if buy_prob > 0.6:
         signal = "BUY"
-    elif sell_prob > 0.60:
+    elif sell_prob > 0.6:
         signal = "SELL"
     else:
         signal = "WAIT"
 
-    confidence = max(buy_prob, sell_prob) * 100
-
     return {
-        "price": round(price, 2),
+        "price": round(window[-1], 2),
         "signal": signal,
-        "confidence": round(confidence, 2),
-        "buy_prob": round(buy_prob, 2),
-        "sell_prob": round(sell_prob, 2),
+        "buy": round(buy_prob, 2),
+        "sell": round(sell_prob, 2)
     }
 
 
 # ======================
-# API ROUTES
+# EMIT SIGNAL
+# ======================
+def emit_signal():
+    data = ai_engine(prices)
+    socketio.emit("update", data)
+
+
+# ======================
+# START BINANCE STREAM
+# ======================
+def start_stream():
+    twm = ThreadedWebsocketManager()
+    twm.start()
+
+    # BTCUSDT live stream
+    twm.start_symbol_ticker_socket(
+        callback=handle_message,
+        symbol="BTCUSDT"
+    )
+
+
+# ======================
+# ROUTES
 # ======================
 @app.route("/")
 def home():
-    return "Level 4 Live AI Engine Running ✔"
-
-
-@app.route("/api/signal")
-def signal():
-    update_price()
-    return jsonify(ai_engine(prices))
-
-
-@app.route("/api/live")
-def live():
-    update_price()
-    return jsonify({
-        "price": round(prices[-1], 2),
-        "history": prices[-50:]  # live mini stream
-    })
+    return "Level 5 Path B Real Market AI Running ✔"
 
 
 @app.route("/api/history")
 def history():
-    return jsonify(prices)
+    return jsonify(prices[-100:])
 
 
 # ======================
-# RUN (RENDER SAFE)
+# SOCKET
+# ======================
+@socketio.on("connect")
+def connect():
+    print("Client Connected ✔")
+
+
+# ======================
+# RUN
 # ======================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    socketio.start_background_task(start_stream)
+    socketio.run(app, host="0.0.0.0", port=10000)

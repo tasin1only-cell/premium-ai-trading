@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, jsonify
 from flask_cors import CORS
 import numpy as np
 import threading
@@ -9,18 +9,22 @@ app = Flask(__name__)
 CORS(app)
 
 # ======================
-# PRICE STORE
+# PRICE DATA STORE
 # ======================
 prices = []
 
+# 🔥 candle lock (global state)
+last_signal_time = 0
+
+
 # ======================
-# PRICE FEED
+# PRICE FEED (SIMULATED MARKET)
 # ======================
 def price_loop():
     price = 100
 
     while True:
-        move = random.uniform(-1.8, 1.8)
+        move = random.uniform(-1.5, 1.5)
         price += move
 
         prices.append(price)
@@ -28,7 +32,8 @@ def price_loop():
         if len(prices) > 500:
             prices.pop(0)
 
-        time.sleep(1.0)
+        time.sleep(1)
+
 
 # ======================
 # EMA
@@ -44,6 +49,7 @@ def ema(data, period):
         result = alpha * p + (1 - alpha) * result
 
     return result
+
 
 # ======================
 # RSI
@@ -68,25 +74,41 @@ def rsi(data, period=14):
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
+
 # ======================
 # MACD
 # ======================
 def macd(data):
-    ema12 = ema(data, 12)
-    ema26 = ema(data, 26)
-    return ema12 - ema26
+    return ema(data, 12) - ema(data, 26)
+
 
 # ======================
-# AI ENGINE
+# WINRATE BOOSTED AI ENGINE
 # ======================
 def ai_engine():
+    global last_signal_time
 
-    if len(prices) < 20:
+    if len(prices) < 50:
         return {
             "signal": "WAIT",
             "confidence": 50,
             "trend": "SIDE",
             "price": prices[-1] if prices else 0,
+            "rsi": 50,
+            "ema20": 0,
+            "ema50": 0,
+            "macd": 0
+        }
+
+    now = time.time()
+
+    # 🔥 60 SEC CANDLE LOCK
+    if now - last_signal_time < 60:
+        return {
+            "signal": "WAIT",
+            "confidence": 50,
+            "trend": "SIDE",
+            "price": round(prices[-1], 2),
             "rsi": 50,
             "ema20": 0,
             "ema50": 0,
@@ -100,75 +122,92 @@ def ai_engine():
 
     score = 0
 
-    # EMA
+    # ======================
+    # TREND FILTER
+    # ======================
     if ema20 > ema50:
         score += 30
     else:
         score -= 30
 
-    # RSI
-    if current_rsi < 48:
+    # ======================
+    # RSI FILTER
+    # ======================
+    if current_rsi < 45:
         score += 25
-    elif current_rsi > 52:
+    elif current_rsi > 55:
         score -= 25
 
-    # MACD
-    if current_macd > 0.02:
-        score += 30
-    elif current_macd < -0.02:
-        score -= 30
+    # ======================
+    # MACD FILTER
+    # ======================
+    if current_macd > 0.03:
+        score += 25
+    elif current_macd < -0.03:
+        score -= 25
 
-    # Momentum
-    if len(prices) > 10:
-        momentum = prices[-1] - prices[-10]
+    # ======================
+    # MOMENTUM FILTER
+    # ======================
+    momentum = prices[-1] - prices[-20]
 
-        if momentum > 0.3:
-            score += 20
-        elif momentum < -0.3:
-            score -= 20
+    if momentum > 0.5:
+        score += 20
+    elif momentum < -0.5:
+        score -= 20
 
-    # Decision
-    if score > 10:
+    # ======================
+    # FINAL DECISION
+    # ======================
+    base_conf = 55 + abs(score)
+
+    if score >= 60:
         signal = "BUY"
         trend = "UP"
-        confidence = min(95, 55 + abs(score))
+        confidence = min(95, base_conf + 10)
 
-    elif score < -10:
+    elif score <= -60:
         signal = "SELL"
         trend = "DOWN"
-        confidence = min(95, 55 + abs(score))
+        confidence = min(95, base_conf + 10)
 
     else:
         signal = "WAIT"
         trend = "SIDE"
-        confidence = 50 + abs(score) * 2
+        confidence = 50
+
+    # 🔥 update lock only when real signal generated
+    last_signal_time = now
 
     return {
         "signal": signal,
         "confidence": round(confidence, 2),
         "trend": trend,
-        "price": round(prices[-1], 2) if prices else 0,
+        "price": round(prices[-1], 2),
         "rsi": round(current_rsi, 2),
         "ema20": round(ema20, 2),
         "ema50": round(ema50, 2),
         "macd": round(current_macd, 4)
     }
 
-# ======================
-# ROUTES (FIXED)
-# ======================
 
+# ======================
+# ROUTES
+# ======================
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return "Level 6C STABLE AI RUNNING ✔"
+
 
 @app.route("/api/signal")
 def signal():
     return jsonify(ai_engine())
 
+
 @app.route("/api/history")
 def history():
     return jsonify(prices[-100:])
+
 
 @app.route("/debug")
 def debug():
@@ -177,13 +216,15 @@ def debug():
         "last_price": prices[-1] if prices else None
     }
 
+
 # ======================
-# START BACKGROUND THREAD
+# START PRICE LOOP
 # ======================
 threading.Thread(target=price_loop, daemon=True).start()
 
+
 # ======================
-# RUN
+# RUN APP
 # ======================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

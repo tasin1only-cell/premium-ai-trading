@@ -1,607 +1,149 @@
-// ======================
-// DEBUG
-// ======================
-console.log("SCRIPT LOADED");
+console.log("LEVEL 6B FINAL STABLE JS LOADED");
 
-// ======================
-// API
-// ======================
-const API_URL =
-"https://premium-ai-trading.onrender.com/api/signal";
+const API_URL = "https://premium-ai-trading.onrender.com/api/signal";
 
 
 // ======================
 // CLOCK
 // ======================
-function updateClock(){
-
-const clock =
-
-document.getElementById(
-
-"clock"
-
-);
-
-if(clock){
-
-clock.innerText =
-
-new Date()
-
-.toLocaleTimeString();
-
-}
-
-}
-
-setInterval(
-
-updateClock,
-
-1000
-
-);
-
-updateClock();
-
+setInterval(() => {
+    const el = document.getElementById("clock");
+    if (el) el.innerText = new Date().toLocaleTimeString();
+}, 1000);
 
 
 // ======================
 // CANDLE TIMER
 // ======================
+setInterval(() => {
+    const sec = new Date().getSeconds();
+    const remaining = 60 - sec;
 
-let candleSec = 59;
+    const el = document.getElementById("candle");
 
-setInterval(()=>{
+    if (el) {
+        el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
 
-candleSec--;
-
-if(
-
-candleSec < 0
-
-){
-
-candleSec = 59;
-
-}
-
-const candle =
-
-document.getElementById(
-
-"candle"
-
-);
-
-if(candle){
-
-candle.innerText =
-
-"Candle Ends : 00:"
-
-+
-
-String(
-
-candleSec
-
-)
-
-.padStart(
-
-2,
-
-"0"
-
-);
-
-}
-
-},
-
-1000
-
-);
-
+        el.style.color = remaining <= 5 ? "red" : "#ffcc00";
+    }
+}, 1000);
 
 
 // ======================
-// TRADINGVIEW
+// SAFE LOOP FLAG (IMPORTANT FIX)
 // ======================
-
-let widget = null;
-
-function loadChart(
-
-symbol="FX:EURUSD"
-
-){
-
-try{
-
-const chart =
-
-document.getElementById(
-
-"tradingview_chart"
-
-);
-
-if(!chart)
-
-return;
-
-
-chart.innerHTML="";
-
-
-widget =
-
-new TradingView.widget({
-
-container_id:
-
-"tradingview_chart",
-
-width:"100%",
-
-height:320,
-
-symbol:symbol,
-
-interval:"1",
-
-theme:"dark",
-
-style:"1",
-
-locale:"en",
-
-hide_side_toolbar:true,
-
-allow_symbol_change:false
-
-});
-
-}
-
-catch(err){
-
-console.log(
-
-"Chart Error:",
-
-err
-
-);
-
-}
-
-}
-
+let running = false;
 
 
 // ======================
-// ASSET CHANGE
+// MAIN SIGNAL FUNCTION
 // ======================
+async function fetchSignal() {
 
-function changeAsset(){
+    if (running) return;   // 🔥 prevent overlap
+    running = true;
 
-let asset =
+    try {
 
-document.getElementById(
+        const res = await fetch(API_URL);
 
-"asset"
+        if (!res.ok) throw new Error("API ERROR");
 
-).value;
+        const data = await res.json();
 
+        console.log("DATA:", data);
 
-const map = {
+        // ======================
+        // SIGNAL
+        // ======================
+        const signalBox = document.getElementById("signalBox");
 
-"EUR/USD":
+        if (signalBox) {
+            signalBox.innerText = "SIGNAL : " + data.signal;
 
-"FX:EURUSD",
+            signalBox.style.color =
+                data.signal === "BUY" ? "#00ff66" :
+                data.signal === "SELL" ? "#ff4444" :
+                "gold";
 
-"GBP/USD":
+            signalBox.style.transform = "scale(1.15)";
+            setTimeout(() => signalBox.style.transform = "scale(1)", 200);
+        }
 
-"FX:GBPUSD",
+        // ======================
+        // TREND
+        // ======================
+        const trend = document.getElementById("trendBox");
 
-"USD/JPY":
+        if (trend) {
+            trend.innerText = "TREND: " + data.trend;
 
-"FX:USDJPY",
+            trend.style.color =
+                data.trend === "UP" ? "#00ff66" :
+                data.trend === "DOWN" ? "#ff4444" :
+                "gold";
+        }
 
-"BTC/USD":
+        // ======================
+        // CONFIDENCE
+        // ======================
+        const conf = document.getElementById("conf");
 
-"BINANCE:BTCUSDT",
+        if (conf) {
+            conf.innerText = "Confidence : " + data.confidence + "%";
 
-"ETH/USD":
+            conf.style.color =
+                data.confidence > 70 ? "#00ff66" :
+                data.confidence < 40 ? "#ff4444" :
+                "gold";
+        }
 
-"BINANCE:ETHUSDT",
+        // ======================
+        // RSI BAR
+        // ======================
+        const rsi = document.getElementById("rsiFill");
 
-"XAU/USD":
+        if (rsi) {
+            rsi.style.width = data.rsi + "%";
 
-"OANDA:XAUUSD"
+            rsi.style.background =
+                data.rsi > 70 ? "red" :
+                data.rsi < 30 ? "lime" :
+                "orange";
+        }
 
-};
+        // ======================
+        // HISTORY
+        // ======================
+        const log = document.getElementById("historyLog");
 
+        if (log) {
 
-loadChart(
+            const item = document.createElement("div");
 
-map[asset]
+            item.style.padding = "4px";
+            item.style.borderBottom = "1px solid #222";
 
-||
+            item.innerText =
+                `${data.signal} | RSI ${data.rsi} | P ${data.price} | ${new Date().toLocaleTimeString()}`;
 
-"FX:EURUSD"
+            log.prepend(item);
 
-);
+            while (log.childNodes.length > 15) {
+                log.removeChild(log.lastChild);
+            }
+        }
 
+    } catch (err) {
+        console.log("ERROR:", err);
+    }
+
+    running = false;
 }
-
 
 
 // ======================
-// INIT
+// AUTO RUNNER
 // ======================
-
-window.onload = ()=>{
-
-console.log(
-
-"PAGE LOADED"
-
-);
-
-loadChart(
-
-"FX:EURUSD"
-
-);
-
-};
-
-
-
-// ======================
-// AI SIGNAL
-// ======================
-
-async function generateSignal(){
-
-try{
-
-document.getElementById(
-
-"signalBox"
-
-).innerText =
-
-"SIGNAL : LOADING...";
-
-
-const res =
-
-await fetch(
-
-API_URL,
-
-{
-
-method:"GET",
-
-headers:{
-
-"Accept":
-
-"application/json"
-
-}
-
-}
-
-);
-
-
-console.log(
-
-"STATUS:",
-
-res.status
-
-);
-
-
-if(
-
-!res.ok
-
-){
-
-throw new Error(
-
-"API ERROR"
-
-);
-
-}
-
-
-const data =
-
-await res.json();
-
-
-console.log(
-
-"DATA:",
-
-data
-
-);
-
-
-// =================
-// TREND
-// =================
-
-const trend =
-
-document.getElementById(
-
-"trendBox"
-
-);
-
-trend.innerText =
-
-"TREND: "
-
-+
-
-(
-
-data.trend
-
-||
-
-"--"
-
-);
-
-
-trend.style.color =
-
-data.trend==="UP"
-
-?
-
-"#00ff66"
-
-:
-
-data.trend==="DOWN"
-
-?
-
-"#ff4444"
-
-:
-
-"gold";
-
-
-
-
-// =================
-// SIGNAL
-// =================
-
-document.getElementById(
-
-"signalBox"
-
-).innerText =
-
-"SIGNAL : "
-
-+
-
-(
-
-data.signal
-
-||
-
-"WAIT"
-
-);
-
-
-
-
-// =================
-// CONFIDENCE
-// =================
-
-document.getElementById(
-
-"conf"
-
-).innerText =
-
-"Confidence : "
-
-+
-
-(
-
-data.confidence
-
-??
-
-"--"
-
-)
-
-+
-
-"%";
-
-
-
-
-// =================
-// RSI
-// =================
-
-const rsiFill =
-
-document.getElementById(
-
-"rsiFill"
-
-);
-
-if(
-
-rsiFill
-
-&&
-
-data.rsi
-
-!==
-
-undefined
-
-){
-
-rsiFill.style.width =
-
-data.rsi
-
-+
-
-"%";
-
-
-rsiFill.style.background =
-
-data.rsi > 70
-
-?
-
-"red"
-
-:
-
-data.rsi < 30
-
-?
-
-"lime"
-
-:
-
-"orange";
-
-}
-
-
-
-
-// =================
-// HISTORY
-// =================
-
-const log =
-
-document.getElementById(
-
-"historyLog"
-
-);
-
-if(log){
-
-const item =
-
-document.createElement(
-
-"div"
-
-);
-
-item.innerText =
-
-`${data.signal}
-
- | RSI ${data.rsi}
-
- | ${data.price}
-
- | ${new Date()
-
-.toLocaleTimeString()}`;
-
-
-log.prepend(
-
-item
-
-);
-
-
-while(
-
-log.childNodes.length
-
->
-
-12
-
-){
-
-log.removeChild(
-
-log.lastChild
-
-);
-
-}
-
-}
-
-}
-
-catch(err){
-
-console.log(
-
-"ERROR:",
-
-err
-
-);
-
-document.getElementById(
-
-"signalBox"
-
-).innerText =
-
-"SIGNAL : ERROR";
-
-
-document.getElementById(
-
-"conf"
-
-).innerText =
-
-err.message;
-
-}
-
-}
+setInterval(fetchSignal, 5000);
+fetchSignal();

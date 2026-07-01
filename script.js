@@ -1,9 +1,8 @@
-console.log("SAFE MODE JS LOADED");
+console.log("CANDLE-LOCK AI SYSTEM LOADED");
 
 const API_URL = "https://premium-ai-trading.onrender.com/api/signal";
 
-let running = false;
-let widget = null;
+let lastCandle = -1;
 
 
 // ======================
@@ -16,39 +15,42 @@ function setText(id, value) {
 
 
 // ======================
-// CLOCK (SAFE)
+// CLOCK
 // ======================
 setInterval(() => {
-    try {
-        setText("clock", new Date().toLocaleTimeString());
-    } catch (e) {
-        console.log(e);
+    setText("clock", new Date().toLocaleTimeString());
+}, 1000);
+
+
+// ======================
+// REAL CANDLE ID (1 MINUTE)
+// ======================
+function getCandleId() {
+    return Math.floor(Date.now() / 60000);
+}
+
+
+// ======================
+// CANDLE TIMER (SYNC)
+// ======================
+setInterval(() => {
+    const sec = new Date().getSeconds();
+    const remaining = 60 - sec;
+
+    const el = document.getElementById("candle");
+
+    if (el) {
+        el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
+        el.style.color = remaining <= 5 ? "red" : "#ffcc00";
     }
 }, 1000);
 
 
 // ======================
-// CANDLE TIMER (SAFE)
+// SAFE CHART INIT
 // ======================
-setInterval(() => {
-    try {
-        const sec = new Date().getSeconds();
-        const remaining = 60 - sec;
+let widget = null;
 
-        const el = document.getElementById("candle");
-        if (el) {
-            el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
-            el.style.color = remaining <= 5 ? "red" : "#ffcc00";
-        }
-    } catch (e) {
-        console.log(e);
-    }
-}, 1000);
-
-
-// ======================
-// CHART SAFE INIT
-// ======================
 function loadChart(symbol = "FX:EURUSD") {
 
     try {
@@ -60,10 +62,7 @@ function loadChart(symbol = "FX:EURUSD") {
 
         setTimeout(() => {
 
-            if (typeof TradingView === "undefined") {
-                console.log("TradingView not loaded");
-                return;
-            }
+            if (typeof TradingView === "undefined") return;
 
             widget = new TradingView.widget({
                 container_id: "tradingview_chart",
@@ -78,7 +77,7 @@ function loadChart(symbol = "FX:EURUSD") {
                 allow_symbol_change: false
             });
 
-        }, 600);
+        }, 500);
 
     } catch (e) {
         console.log("Chart Error:", e);
@@ -87,76 +86,106 @@ function loadChart(symbol = "FX:EURUSD") {
 
 
 // ======================
-// SAFE SIGNAL ENGINE
+// CANDLE-LOCK SIGNAL ENGINE (IMPORTANT)
 // ======================
 async function fetchSignal() {
 
-    if (running) return;
-    running = true;
+    const currentCandle = getCandleId();
+
+    // 🔥 BLOCK MULTIPLE SIGNALS IN SAME CANDLE
+    if (currentCandle === lastCandle) {
+        return;
+    }
+
+    lastCandle = currentCandle;
 
     try {
 
         const res = await fetch(API_URL);
-
         if (!res.ok) throw new Error("API ERROR");
 
         const data = await res.json();
 
-        console.log("DATA:", data);
+        console.log("NEW CANDLE SIGNAL:", data);
 
+        // ======================
+        // SIGNAL
+        // ======================
         setText("signalBox", "SIGNAL : " + data.signal);
-        setText("trendBox", "TREND: " + data.trend);
-        setText("conf", "Confidence : " + data.confidence + "%");
 
-        const rsi = document.getElementById("rsiFill");
-        if (rsi && data.rsi) {
-            rsi.style.width = data.rsi + "%";
+        const signalBox = document.getElementById("signalBox");
+        if (signalBox) {
+            signalBox.style.color =
+                data.signal === "BUY" ? "#00ff66" :
+                data.signal === "SELL" ? "#ff4444" :
+                "gold";
         }
 
+        // ======================
+        // TREND
+        // ======================
+        setText("trendBox", "TREND: " + data.trend);
+
+        // ======================
+        // CONFIDENCE
+        // ======================
+        setText("conf", "Confidence : " + data.confidence + "%");
+
+        // ======================
+        // RSI
+        // ======================
+        const rsi = document.getElementById("rsiFill");
+        if (rsi && data.rsi !== undefined) {
+            rsi.style.width = data.rsi + "%";
+
+            rsi.style.background =
+                data.rsi > 70 ? "red" :
+                data.rsi < 30 ? "lime" :
+                "orange";
+        }
+
+        // ======================
+        // HISTORY
+        // ======================
         const log = document.getElementById("historyLog");
 
         if (log) {
+
             const item = document.createElement("div");
+
+            item.style.padding = "4px";
+            item.style.borderBottom = "1px solid #222";
+
             item.innerText =
-                `${data.signal} | RSI ${data.rsi} | ${data.price}`;
+                `${data.signal} | RSI ${data.rsi} | P ${data.price} | ${new Date().toLocaleTimeString()}`;
 
             log.prepend(item);
 
-            while (log.childNodes.length > 10) {
+            while (log.childNodes.length > 15) {
                 log.removeChild(log.lastChild);
             }
         }
 
     } catch (err) {
         console.log("SIGNAL ERROR:", err);
-
-        setText("signalBox", "SIGNAL : ERROR");
     }
-
-    running = false;
 }
 
 
 // ======================
-// AUTO RUN SAFE
+// AUTO LOOP (SAFE)
 // ======================
-setInterval(() => {
-    fetchSignal();
-}, 5000);
+setInterval(fetchSignal, 3000); // fast check, but candle lock controls output
 
 
 // ======================
-// INIT SAFE
+// INIT SYSTEM
 // ======================
 window.onload = () => {
 
-    console.log("INIT SAFE SYSTEM");
+    console.log("INIT CANDLE AI SYSTEM");
 
-    try {
-        loadChart("FX:EURUSD");
-    } catch (e) {
-        console.log("INIT ERROR:", e);
-    }
+    loadChart("FX:EURUSD");
 
     fetchSignal();
 };

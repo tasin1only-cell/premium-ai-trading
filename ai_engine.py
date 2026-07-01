@@ -2,28 +2,52 @@ def analyze(rsi, macd, ema):
 
     score = 0
 
-    # RSI logic
-    if rsi > 60:
+    # RSI
+    if rsi > 55:
         score += 1
-    elif rsi < 40:
+
+    elif rsi < 45:
         score -= 1
 
-    # MACD logic
+
+    # MACD
     if macd == "BUY":
         score += 1
+
     elif macd == "SELL":
         score -= 1
 
-    # EMA logic
+
+    # EMA
     if ema == "UP":
         score += 1
+
     elif ema == "DOWN":
         score -= 1
 
-    # Final decision
-    if score >= 2:
-        return "BUY"
-    elif score <= -2:
-        return "SELL"
+
+    confidence = 50 + abs(score) * 15
+
+
+    if score > 0:
+
+        signal = "BUY"
+
+    elif score < 0:
+
+        signal = "SELL"
+
     else:
-        return "WAIT"
+
+        signal = "WAIT"
+
+
+    return {
+
+        "signal": signal,
+
+        "confidence": confidence,
+
+        "score": score
+
+    }

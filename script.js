@@ -1,70 +1,516 @@
+// ======================
+// DEBUG
+// ======================
+console.log("SCRIPT LOADED");
 
-const assets = [
-"EUR/USD", "GBP/USD", "USD/JPY",
-"AUD/USD", "USD/CHF", "USD/CAD",
-"NZD/USD", "EUR/GBP", "EUR/JPY",
-"GBP/JPY", "BTC/USD", "ETH/USD",
-"XAU/USD (Gold)", "XAG/USD (Silver)"
-];
+// ======================
+// API
+// ======================
+const API_URL =
+"https://premium-ai-trading.onrender.com/api/signal";
 
-const sessions = ["Global", "USA Session", "London Session", "Asia Session"];
 
-// AUTO BASE URL (fix IP issues)
-function getBaseURL() {
-    return "http://192.168.0.100:5000";
+// ======================
+// CLOCK
+// ======================
+function updateClock(){
+
+const clock =
+document.getElementById("clock");
+
+if(clock){
+
+clock.innerText =
+
+new Date().toLocaleTimeString();
+
 }
 
-async function generateSignal() {
+}
 
-    let asset = document.getElementById("asset").value;
-    let session = document.getElementById("country").value;
+setInterval(updateClock,1000);
 
-    let url = getBaseURL() + "/predict";
+updateClock();
 
-    console.log("Sending request to:", url);
 
-    try {
 
-        let response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                rsi: Math.floor(Math.random() * 100),
-                macd: Math.random() > 0.5 ? "BUY" : "SELL",
-                ema: Math.random() > 0.5 ? "UP" : "DOWN"
-            })
-        });
+// ======================
+// CANDLE TIMER
+// ======================
 
-        if (!response.ok) {
-            throw new Error("HTTP Error: " + response.status);
-        }
+let candleSec = 59;
 
-        let data = await response.json();
+setInterval(()=>{
 
-        console.log("Response from server:", data);
+candleSec--;
 
-        document.getElementById("signalBox").innerText =
-            "SIGNAL: " + (data.signal || "NO DATA");
+if(candleSec < 0){
 
-        document.getElementById("conf").innerText =
-            "CONFIDENCE: " + (data.confidence || 0) + "%";
+candleSec = 59;
 
-        document.getElementById("extra").innerText =
-            "Asset: " + asset + " | Session: " + session;
+}
 
-    } catch (error) {
+const candle =
 
-        console.log("ERROR:", error);
+document.getElementById(
 
-        document.getElementById("signalBox").innerText =
-            "SIGNAL: ERROR";
+"candle"
 
-        document.getElementById("conf").innerText =
-            "CONFIDENCE: 0%";
+);
 
-        document.getElementById("extra").innerText =
-            "Backend not connected ❌ Check Flask / IP / WiFi";
-    }
+if(candle){
+
+candle.innerText =
+
+"Candle Ends : 00:"
+
++
+
+String(candleSec)
+
+.padStart(2,"0");
+
+}
+
+},1000);
+
+
+
+// ======================
+// TRADINGVIEW
+// ======================
+
+let widget = null;
+
+function loadChart(
+
+symbol="FX:EURUSD"
+
+){
+
+try{
+
+const chart =
+
+document.getElementById(
+
+"tradingview_chart"
+
+);
+
+if(!chart) return;
+
+chart.innerHTML = "";
+
+widget = new TradingView.widget({
+
+container_id:
+
+"tradingview_chart",
+
+width:"100%",
+
+height:320,
+
+symbol:symbol,
+
+interval:"1",
+
+theme:"dark",
+
+style:"1",
+
+locale:"en",
+
+hide_side_toolbar:true,
+
+allow_symbol_change:false
+
+});
+
+}
+
+catch(err){
+
+console.log(
+
+"Chart Error:",
+
+err
+
+);
+
+}
+
+}
+
+
+
+// ======================
+// ASSET CHANGE
+// ======================
+
+function changeAsset(){
+
+let asset =
+
+document.getElementById(
+
+"asset"
+
+).value;
+
+
+const map = {
+
+"EUR/USD":"FX:EURUSD",
+
+"GBP/USD":"FX:GBPUSD",
+
+"USD/JPY":"FX:USDJPY",
+
+"BTC/USD":"BINANCE:BTCUSDT",
+
+"ETH/USD":"BINANCE:ETHUSDT",
+
+"XAU/USD":"OANDA:XAUUSD"
+
+};
+
+loadChart(
+
+map[asset]
+
+||
+
+"FX:EURUSD"
+
+);
+
+}
+
+
+
+// ======================
+// INIT
+// ======================
+
+window.onload = ()=>{
+
+console.log(
+
+"PAGE LOADED"
+
+);
+
+loadChart(
+
+"FX:EURUSD"
+
+);
+
+};
+
+
+
+// ======================
+// AI SIGNAL
+// ======================
+
+async function generateSignal(){
+
+console.log(
+
+"BUTTON CLICKED"
+
+);
+
+try{
+
+document.getElementById(
+
+"signalBox"
+
+).innerText =
+
+"SIGNAL : LOADING...";
+
+
+const res =
+
+await fetch(
+
+API_URL
+
+);
+
+if(!res.ok){
+
+throw new Error(
+
+"API ERROR"
+
+);
+
+}
+
+
+const data =
+
+await res.json();
+
+console.log(
+
+data
+
+);
+
+
+// =================
+// TREND
+// =================
+
+const trendBox =
+
+document.getElementById(
+
+"trendBox"
+
+);
+
+trendBox.innerText =
+
+"TREND: "
+
++
+
+(data.trend
+
+||
+
+"--");
+
+trendBox.style.color =
+
+data.trend==="UP"
+
+?
+
+"#00ff66"
+
+:
+
+data.trend==="DOWN"
+
+?
+
+"#ff4444"
+
+:
+
+"gold";
+
+
+
+// =================
+// SIGNAL
+// =================
+
+document.getElementById(
+
+"signalBox"
+
+).innerText =
+
+"SIGNAL : "
+
++
+
+(data.signal
+
+||
+
+"WAIT");
+
+
+
+
+// =================
+// CONFIDENCE
+// =================
+
+document.getElementById(
+
+"conf"
+
+).innerText =
+
+"Confidence : "
+
++
+
+(data.confidence
+
+??
+
+"--")
+
++
+
+"%";
+
+
+
+
+// =================
+// RSI
+// =================
+
+const rsiFill =
+
+document.getElementById(
+
+"rsiFill"
+
+);
+
+if(
+
+rsiFill
+
+&&
+
+data.rsi
+
+!==
+
+undefined
+
+){
+
+rsiFill.style.width =
+
+data.rsi
+
++
+
+"%";
+
+
+rsiFill.style.background =
+
+data.rsi > 70
+
+?
+
+"red"
+
+:
+
+data.rsi < 30
+
+?
+
+"lime"
+
+:
+
+"orange";
+
+}
+
+
+
+// =================
+// HISTORY
+// =================
+
+const log =
+
+document.getElementById(
+
+"historyLog"
+
+);
+
+if(log){
+
+const item =
+
+document.createElement(
+
+"div"
+
+);
+
+item.innerText =
+
+`${data.signal}
+
+ | RSI ${data.rsi}
+
+ | ${data.price}
+
+ | ${new Date()
+
+.toLocaleTimeString()}`;
+
+
+log.prepend(
+
+item
+
+);
+
+
+while(
+
+log.childNodes.length
+
+>
+
+12
+
+){
+
+log.removeChild(
+
+log.lastChild
+
+);
+
+}
+
+}
+
+}
+
+catch(err){
+
+console.log(
+
+err
+
+);
+
+
+document.getElementById(
+
+"signalBox"
+
+).innerText =
+
+"SIGNAL : ERROR";
+
+
+document.getElementById(
+
+"conf"
+
+).innerText =
+
+"Confidence : --";
+
+}
+
 }

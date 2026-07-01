@@ -1,4 +1,3 @@
-
 // ======================
 // DEBUG
 // ======================
@@ -14,134 +13,562 @@ const API_URL =
 // ======================
 // CLOCK
 // ======================
-setInterval(()=>{
-document.getElementById("clock").innerText =
-new Date().toLocaleTimeString();
-},1000);
+function updateClock(){
+
+const clock =
+
+document.getElementById(
+
+"clock"
+
+);
+
+if(clock){
+
+clock.innerText =
+
+new Date()
+
+.toLocaleTimeString();
+
+}
+
+}
+
+setInterval(
+
+updateClock,
+
+1000
+
+);
+
+updateClock();
+
 
 
 // ======================
 // CANDLE TIMER
 // ======================
+
 let candleSec = 59;
 
 setInterval(()=>{
 
 candleSec--;
 
-if(candleSec < 0) candleSec = 59;
+if(
 
-const c = document.getElementById("candle");
+candleSec < 0
 
-if(c){
-c.innerText = "Candle Ends : 00:" +
-String(candleSec).padStart(2,"0");
+){
+
+candleSec = 59;
+
 }
 
-},1000);
+const candle =
+
+document.getElementById(
+
+"candle"
+
+);
+
+if(candle){
+
+candle.innerText =
+
+"Candle Ends : 00:"
+
++
+
+String(
+
+candleSec
+
+)
+
+.padStart(
+
+2,
+
+"0"
+
+);
+
+}
+
+},
+
+1000
+
+);
+
 
 
 // ======================
-// SAFE SIGNAL FUNCTION
+// TRADINGVIEW
 // ======================
+
+let widget = null;
+
+function loadChart(
+
+symbol="FX:EURUSD"
+
+){
+
+try{
+
+const chart =
+
+document.getElementById(
+
+"tradingview_chart"
+
+);
+
+if(!chart)
+
+return;
+
+
+chart.innerHTML="";
+
+
+widget =
+
+new TradingView.widget({
+
+container_id:
+
+"tradingview_chart",
+
+width:"100%",
+
+height:320,
+
+symbol:symbol,
+
+interval:"1",
+
+theme:"dark",
+
+style:"1",
+
+locale:"en",
+
+hide_side_toolbar:true,
+
+allow_symbol_change:false
+
+});
+
+}
+
+catch(err){
+
+console.log(
+
+"Chart Error:",
+
+err
+
+);
+
+}
+
+}
+
+
+
+// ======================
+// ASSET CHANGE
+// ======================
+
+function changeAsset(){
+
+let asset =
+
+document.getElementById(
+
+"asset"
+
+).value;
+
+
+const map = {
+
+"EUR/USD":
+
+"FX:EURUSD",
+
+"GBP/USD":
+
+"FX:GBPUSD",
+
+"USD/JPY":
+
+"FX:USDJPY",
+
+"BTC/USD":
+
+"BINANCE:BTCUSDT",
+
+"ETH/USD":
+
+"BINANCE:ETHUSDT",
+
+"XAU/USD":
+
+"OANDA:XAUUSD"
+
+};
+
+
+loadChart(
+
+map[asset]
+
+||
+
+"FX:EURUSD"
+
+);
+
+}
+
+
+
+// ======================
+// INIT
+// ======================
+
+window.onload = ()=>{
+
+console.log(
+
+"PAGE LOADED"
+
+);
+
+loadChart(
+
+"FX:EURUSD"
+
+);
+
+};
+
+
+
+// ======================
+// AI SIGNAL
+// ======================
+
 async function generateSignal(){
 
 try{
 
-document.getElementById("signalBox").innerText =
-"SIGNAL : ANALYZING...";
+document.getElementById(
 
-document.getElementById("conf").innerText =
-"Confidence : ...";
+"signalBox"
 
-const res = await fetch(API_URL);
+).innerText =
 
-if(!res.ok){
-throw new Error("API ERROR " + res.status);
+"SIGNAL : LOADING...";
+
+
+const res =
+
+await fetch(
+
+API_URL,
+
+{
+
+method:"GET",
+
+headers:{
+
+"Accept":
+
+"application/json"
+
 }
 
-const data = await res.json();
+}
 
-console.log("API DATA:", data);
-
-// ======================
-// SAFE FALLBACK (IMPORTANT)
-// ======================
-
-const signal = data.signal || "WAIT";
-const confidence = data.confidence ?? 55;
-const rsi = data.rsi ?? 50;
-const trend = data.trend || "SIDE";
-const price = data.price || 0;
+);
 
 
-// ======================
-// TREND UI
-// ======================
-const trendBox =
-document.getElementById("trendBox");
+console.log(
 
-trendBox.innerText =
-"TREND: " + trend;
+"STATUS:",
 
-trendBox.style.color =
-trend === "UP"
-? "lime"
-: trend === "DOWN"
-? "red"
-: "gold";
+res.status
+
+);
 
 
-// ======================
-// SIGNAL UI
-// ======================
-document.getElementById("signalBox").innerText =
-"SIGNAL : " + signal;
+if(
+
+!res.ok
+
+){
+
+throw new Error(
+
+"API ERROR"
+
+);
+
+}
 
 
-// ======================
-// CONFIDENCE UI (NO ZERO ISSUE)
-// ======================
-document.getElementById("conf").innerText =
-"Confidence : " + confidence + "%";
+const data =
+
+await res.json();
 
 
-// ======================
-// RSI BAR
-// ======================
+console.log(
+
+"DATA:",
+
+data
+
+);
+
+
+// =================
+// TREND
+// =================
+
+const trend =
+
+document.getElementById(
+
+"trendBox"
+
+);
+
+trend.innerText =
+
+"TREND: "
+
++
+
+(
+
+data.trend
+
+||
+
+"--"
+
+);
+
+
+trend.style.color =
+
+data.trend==="UP"
+
+?
+
+"#00ff66"
+
+:
+
+data.trend==="DOWN"
+
+?
+
+"#ff4444"
+
+:
+
+"gold";
+
+
+
+
+// =================
+// SIGNAL
+// =================
+
+document.getElementById(
+
+"signalBox"
+
+).innerText =
+
+"SIGNAL : "
+
++
+
+(
+
+data.signal
+
+||
+
+"WAIT"
+
+);
+
+
+
+
+// =================
+// CONFIDENCE
+// =================
+
+document.getElementById(
+
+"conf"
+
+).innerText =
+
+"Confidence : "
+
++
+
+(
+
+data.confidence
+
+??
+
+"--"
+
+)
+
++
+
+"%";
+
+
+
+
+// =================
+// RSI
+// =================
+
 const rsiFill =
-document.getElementById("rsiFill");
 
-if(rsiFill){
+document.getElementById(
 
-rsiFill.style.width = rsi + "%";
+"rsiFill"
+
+);
+
+if(
+
+rsiFill
+
+&&
+
+data.rsi
+
+!==
+
+undefined
+
+){
+
+rsiFill.style.width =
+
+data.rsi
+
++
+
+"%";
+
 
 rsiFill.style.background =
-rsi > 70 ? "red" :
-rsi < 30 ? "lime" :
+
+data.rsi > 70
+
+?
+
+"red"
+
+:
+
+data.rsi < 30
+
+?
+
+"lime"
+
+:
+
 "orange";
 
 }
 
 
-// ======================
+
+
+// =================
 // HISTORY
-// ======================
+// =================
+
 const log =
-document.getElementById("historyLog");
+
+document.getElementById(
+
+"historyLog"
+
+);
 
 if(log){
 
 const item =
-document.createElement("div");
+
+document.createElement(
+
+"div"
+
+);
 
 item.innerText =
-`${signal} | RSI ${rsi} | ${price} | ${new Date().toLocaleTimeString()}`;
 
-log.prepend(item);
+`${data.signal}
 
-if(log.childNodes.length > 12){
-log.removeChild(log.lastChild);
+ | RSI ${data.rsi}
+
+ | ${data.price}
+
+ | ${new Date()
+
+.toLocaleTimeString()}`;
+
+
+log.prepend(
+
+item
+
+);
+
+
+while(
+
+log.childNodes.length
+
+>
+
+12
+
+){
+
+log.removeChild(
+
+log.lastChild
+
+);
+
 }
 
 }
@@ -150,13 +577,30 @@ log.removeChild(log.lastChild);
 
 catch(err){
 
-console.log("ERROR:", err);
+console.log(
 
-document.getElementById("signalBox").innerText =
+"ERROR:",
+
+err
+
+);
+
+document.getElementById(
+
+"signalBox"
+
+).innerText =
+
 "SIGNAL : ERROR";
 
-document.getElementById("conf").innerText =
-"Confidence : 50%";
+
+document.getElementById(
+
+"conf"
+
+).innerText =
+
+err.message;
 
 }
 

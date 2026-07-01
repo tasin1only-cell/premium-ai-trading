@@ -1,6 +1,9 @@
-console.log("LEVEL 6B FINAL STABLE JS LOADED");
+console.log("LEVEL 6B FULL FINAL SYSTEM LOADED");
 
 const API_URL = "https://premium-ai-trading.onrender.com/api/signal";
+
+let running = false;
+let widget = null;
 
 
 // ======================
@@ -13,7 +16,7 @@ setInterval(() => {
 
 
 // ======================
-// CANDLE TIMER
+// CANDLE TIMER (REAL TIME)
 // ======================
 setInterval(() => {
     const sec = new Date().getSeconds();
@@ -30,17 +33,66 @@ setInterval(() => {
 
 
 // ======================
-// SAFE LOOP FLAG (IMPORTANT FIX)
+// CHART INIT FIX (IMPORTANT)
 // ======================
-let running = false;
+function loadChart(symbol = "FX:EURUSD") {
+
+    try {
+
+        const el = document.getElementById("tradingview_chart");
+        if (!el) return;
+
+        el.innerHTML = "";
+
+        setTimeout(() => {
+
+            widget = new TradingView.widget({
+                container_id: "tradingview_chart",
+                width: "100%",
+                height: 320,
+                symbol: symbol,
+                interval: "1",
+                theme: "dark",
+                style: "1",
+                locale: "en",
+                hide_side_toolbar: true,
+                allow_symbol_change: false
+            });
+
+        }, 400);
+
+    } catch (err) {
+        console.log("Chart Error:", err);
+    }
+}
 
 
 // ======================
-// MAIN SIGNAL FUNCTION
+// ASSET CHANGE
+// ======================
+function changeAsset() {
+
+    const asset = document.getElementById("asset").value;
+
+    const map = {
+        "EUR/USD": "FX:EURUSD",
+        "GBP/USD": "FX:GBPUSD",
+        "USD/JPY": "FX:USDJPY",
+        "BTC/USD": "BINANCE:BTCUSDT",
+        "ETH/USD": "BINANCE:ETHUSDT",
+        "XAU/USD": "OANDA:XAUUSD"
+    };
+
+    loadChart(map[asset] || "FX:EURUSD");
+}
+
+
+// ======================
+// AUTO SIGNAL ENGINE
 // ======================
 async function fetchSignal() {
 
-    if (running) return;   // 🔥 prevent overlap
+    if (running) return;
     running = true;
 
     try {
@@ -91,15 +143,10 @@ async function fetchSignal() {
 
         if (conf) {
             conf.innerText = "Confidence : " + data.confidence + "%";
-
-            conf.style.color =
-                data.confidence > 70 ? "#00ff66" :
-                data.confidence < 40 ? "#ff4444" :
-                "gold";
         }
 
         // ======================
-        // RSI BAR
+        // RSI
         // ======================
         const rsi = document.getElementById("rsiFill");
 
@@ -146,4 +193,16 @@ async function fetchSignal() {
 // AUTO RUNNER
 // ======================
 setInterval(fetchSignal, 5000);
-fetchSignal();
+
+
+// ======================
+// INIT SYSTEM (IMPORTANT FIX)
+// ======================
+window.onload = () => {
+
+    console.log("SYSTEM INIT");
+
+    loadChart("FX:EURUSD");
+
+    fetchSignal();
+};

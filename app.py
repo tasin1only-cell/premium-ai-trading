@@ -9,7 +9,7 @@ CORS(app)
 # ======================
 # SIMULATED MARKET DATA
 # ======================
-prices = [100 + random.uniform(-1, 1) for _ in range(80)]
+prices = [100 + random.uniform(-1, 1) for _ in range(120)]
 
 
 # ======================
@@ -30,7 +30,7 @@ def rsi(data):
     return 100 - (100 / (1 + rs))
 
 
-def ema(data, period=10):
+def ema(data, period=14):
     k = 2 / (period + 1)
     ema_val = data[0]
 
@@ -40,90 +40,118 @@ def ema(data, period=10):
     return ema_val
 
 
-# ======================
-# TREND ENGINE (IMPROVED)
-# ======================
-def trend(data):
-    short = sum(data[-5:]) / 5
-    long = sum(data[-20:]) / 20
-
-    if short > long:
-        return "UP"
-    elif short < long:
-        return "DOWN"
-    return "SIDE"
+def volatility(data):
+    mean = sum(data) / len(data)
+    return sum((x - mean) ** 2 for x in data) / len(data)
 
 
 # ======================
-# PRICE UPDATE (SIMULATED)
+# PRICE UPDATE
 # ======================
 def update_price():
     global prices
-    change = random.uniform(-1.2, 1.2)
-    new_price = prices[-1] + change
+    change = random.uniform(-1.5, 1.5)
+    prices.append(prices[-1] + change)
 
-    prices.append(new_price)
-
-    if len(prices) > 120:
+    if len(prices) > 200:
         prices.pop(0)
 
 
 # ======================
-# AI LOGIC (LEVEL 1 SMART)
+# FEATURE ENGINE
 # ======================
-def ai_engine(data):
-
-    current_rsi = rsi(data)
-    current_ema = ema(data)
-    current_price = data[-1]
-    current_trend = trend(data)
-
-    signal = "WAIT"
-    confidence = 50
-
-    # STRONG LOGIC (NO PURE RANDOM)
-    if current_trend == "UP" and current_rsi < 70 and current_price > current_ema:
-        signal = "BUY"
-        confidence = int(75 + (70 - current_rsi) * 0.3)
-
-    elif current_trend == "DOWN" and current_rsi > 30 and current_price < current_ema:
-        signal = "SELL"
-        confidence = int(75 + (current_rsi - 30) * 0.3)
-
-    elif current_rsi < 25:
-        signal = "STRONG BUY"
-        confidence = 90
-
-    elif current_rsi > 75:
-        signal = "STRONG SELL"
-        confidence = 90
-
-    else:
-        signal = "WAIT"
-        confidence = 40 + random.randint(0, 10)
-
+def features(data):
     return {
-        "trend": current_trend,
-        "rsi": round(current_rsi, 2),
-        "ema": round(current_ema, 2),
-        "price": round(current_price, 2),
-        "signal": signal,
-        "confidence": int(confidence)
+        "rsi": rsi(data),
+        "ema": ema(data),
+        "price": data[-1],
+        "volatility": volatility(data)
     }
 
 
 # ======================
-# ROUTES
+# PROBABILITY MODEL (LEVEL 2 CORE)
 # ======================
-@app.route("/")
-def home():
-    return "Level 1 AI Trading Engine Running ✔"
+def probability_engine(f):
+
+    rsi_val = f["rsi"]
+    ema_val = f["ema"]
+    price = f["price"]
+    vol = f["volatility"]
+
+    # BASE SCORES
+    buy = 0.5
+    sell = 0.5
+
+    # RSI influence
+    if rsi_val < 30:
+        buy += 0.25
+    elif rsi_val > 70:
+        sell += 0.25
+
+    # EMA trend influence
+    if price > ema_val:
+        buy += 0.2
+    else:
+        sell += 0.2
+
+    # Volatility adjustment
+    if vol > 5:
+        buy -= 0.05
+        sell -= 0.05
+
+    # Normalize
+    total = buy + sell
+
+    buy_prob = buy / total
+    sell_prob = sell / total
+    wait_prob = max(0, 1 - (buy_prob + sell_prob))
+
+    return {
+        "BUY": round(buy_prob, 2),
+        "SELL": round(sell_prob, 2),
+        "WAIT": round(wait_prob, 2)
+    }
 
 
+# ======================
+# FINAL DECISION
+# ======================
+def decision(prob):
+
+    if prob["BUY"] > 0.6:
+        signal = "BUY"
+    elif prob["SELL"] > 0.6:
+        signal = "SELL"
+    else:
+        signal = "WAIT"
+
+    confidence = max(prob["BUY"], prob["SELL"]) * 100
+
+    return signal, int(confidence)
+
+
+# ======================
+# ROUTE
+# ======================
 @app.route("/api/signal")
 def signal():
+
     update_price()
-    return jsonify(ai_engine(prices))
+
+    f = features(prices)
+    prob = probability_engine(f)
+    signal, confidence = decision(prob)
+
+    return jsonify({
+        "trend": "UP" if prices[-1] > prices[-10] else "DOWN",
+        "price": round(prices[-1], 2),
+        "rsi": round(f["rsi"], 2),
+        "ema": round(f["ema"], 2),
+        "probability": prob,
+        "signal": signal,
+        "confidence": confidence
+    })
 
 
 @app.route("/api/history")

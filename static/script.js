@@ -1,9 +1,12 @@
-console.log("LEVEL 6C PRO JS LOADED");
+console.log("LEVEL 6C STABLE JS LOADED");
 
 // ======================
 // API
 // ======================
-const API_URL = "/api/signal";
+const API_URL = "https://premium-ai-trading.onrender.com/api/signal";
+
+let running = false;
+
 
 // ======================
 // CLOCK
@@ -12,6 +15,7 @@ setInterval(() => {
     const el = document.getElementById("clock");
     if (el) el.innerText = new Date().toLocaleTimeString();
 }, 1000);
+
 
 // ======================
 // CANDLE TIMER (SYNC FIXED)
@@ -28,22 +32,19 @@ setInterval(() => {
     }
 }, 1000);
 
+
 // ======================
-// TRADINGVIEW GLOBAL
+// TRADINGVIEW CHART
 // ======================
 let widget = null;
 
-// ======================
-// LOAD CHART (FIXED)
-// ======================
 function loadChart(symbol = "FX:EURUSD") {
-
     try {
+        const chart = document.getElementById("tradingview_chart");
 
-        const container = document.getElementById("tradingview_chart");
-        if (!container) return;
+        if (!chart) return;
 
-        container.innerHTML = "";
+        chart.innerHTML = "";
 
         widget = new TradingView.widget({
             container_id: "tradingview_chart",
@@ -63,11 +64,11 @@ function loadChart(symbol = "FX:EURUSD") {
     }
 }
 
+
 // ======================
-// ASSET MAP
+// ASSET CHANGE FIX (IMPORTANT)
 // ======================
 function changeAsset() {
-
     const asset = document.getElementById("asset").value;
 
     const map = {
@@ -79,18 +80,21 @@ function changeAsset() {
         "XAU/USD": "OANDA:XAUUSD"
     };
 
-    const symbol = map[asset] || "FX:EURUSD";
-
-    loadChart(symbol);
+    loadChart(map[asset] || "FX:EURUSD");
 }
 
-// ======================
-// SAFE FLAG (ANTI SPAM)
-// ======================
-let running = false;
 
 // ======================
-// MAIN SIGNAL
+// INIT
+// ======================
+window.onload = () => {
+    console.log("PAGE LOADED");
+    loadChart("FX:EURUSD");
+};
+
+
+// ======================
+// SIGNAL ENGINE (FIXED + NO SPAM)
 // ======================
 async function generateSignal() {
 
@@ -156,6 +160,7 @@ async function generateSignal() {
 
         if (rsiFill) {
             rsiFill.style.width = data.rsi + "%";
+
             rsiFill.style.background =
                 data.rsi > 70 ? "red" :
                 data.rsi < 30 ? "lime" :
@@ -168,7 +173,6 @@ async function generateSignal() {
         const log = document.getElementById("historyLog");
 
         if (log) {
-
             const item = document.createElement("div");
 
             item.style.padding = "4px";
@@ -191,15 +195,10 @@ async function generateSignal() {
     running = false;
 }
 
-// ======================
-// AUTO RUNNER
-// ======================
-setInterval(generateSignal, 5000);
-generateSignal();
 
 // ======================
-// INIT
+// FIXED AUTO RUN (IMPORTANT)
 // ======================
-window.onload = () => {
-    loadChart("FX:EURUSD");
-};
+// 🔥 60 sec instead of 5 sec
+setInterval(generateSignal, 60000);
+generateSignal();

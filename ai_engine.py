@@ -1,136 +1,118 @@
 import numpy as np
 import time
-from analytics import log_signal, calculate_winrate
+from ml_model import load_model, predict
 
-last_candle = -1
+model = load_model()
+
 last_signal = "WAIT"
 
 
-# ================= EMA =================
 def ema(data, period):
     if len(data) < period:
-        return data[-1] if data else 0
-
-    alpha = 2 / (period + 1)
-    result = np.mean(data[:period])
-
+        return data[-1]
+    alpha = 2/(period+1)
+    res = np.mean(data[:period])
     for p in data[period:]:
-        result = alpha * p + (1 - alpha) * result
+        res = alpha*p + (1-alpha)*res
+    return res
 
-    return result
 
-
-# ================= RSI =================
 def rsi(data, period=14):
-    if len(data) < period + 1:
+    if len(data) < period+1:
         return 50
 
     gains, losses = [], []
 
-    for i in range(1, period + 1):
-        diff = data[-i] - data[-i - 1]
+    for i in range(1, period+1):
+        diff = data[-i] - data[-i-1]
         if diff > 0:
             gains.append(diff)
         else:
             losses.append(abs(diff))
 
-    avg_gain = np.mean(gains) if gains else 0.01
-    avg_loss = np.mean(losses) if losses else 0.01
+    ag = np.mean(gains) if gains else 0.01
+    al = np.mean(losses) if losses else 0.01
 
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+    rs = ag/al
+    return 100 - (100/(1+rs))
 
 
-# ================= MACD =================
 def macd(data):
     if len(data) < 26:
         return 0
-    return ema(data, 12) - ema(data, 26)
+    return ema(data,12) - ema(data,26)
 
 
-# ================= AI ENGINE (LEVEL 9) =================
-def ai_engine(prices, candle_start):
-
-    global last_candle, last_signal
-
-    if len(prices) < 40:
-        return {
-            "signal": "WAIT",
-            "confidence": 50,
-            "trend": "SIDE",
-            "market": "WARMUP",
-            "risk": "LOW",
-            "strength": "NONE",
-            "price": prices[-1] if prices else 0,
-            "rsi": 50,
-            "probability": 0,
-            "winrate": calculate_winrate(),
-            "timestamp": int(time.time())
-        }
-
-    ema20 = ema(prices, 20)
-    ema50 = ema(prices, 50)
+def features(prices):
+    price = prices[-1]
+    ema20 = ema(prices,20)
+    ema50 = ema(prices,50)
     r = rsi(prices)
     m = macd(prices)
-
     momentum = prices[-1] - prices[-5]
 
-    score = 0
+    return [price, ema20, ema50, r, m, momentum]
 
-    # ================= CORE LOGIC =================
-    score += 30 if ema20 > ema50 else -30
 
-    if r > 60:
-        score += 15
-    elif r < 40:
-        score -= 15
+def ai_engine(prices, candle_start):
 
-    score += 25 if m > 0 else -25
+    global last_signal
 
-    if momentum > 0.5:
-        score += 15
-    elif momentum < -0.5:
-        score -= 15
+    if len(prices) < 60:
+        return {
+            "signal":"WAIT",
+            "confidence":50,
+            "trend":"SIDE",
+            "market":"WARMUP",
+            "risk":"LOW",
+            "strength":"NONE",
+            "price":prices[-1] if prices else 0,
+            "rsi":50,
+            "probability":0,
+            "timestamp":int(time.time())
+        }
 
-    probability = max(5, min(95, 50 + score))
+    X = features(prices)
 
-    if score >= 40:
-        signal = "BUY"
-        trend = "UP"
-    elif score <= -40:
-        signal = "SELL"
-        trend = "DOWN"
+    if model:
+        pred, prob = predict(model, X)
+
+        if pred == 0:
+            signal = "BUY"
+            trend = "UP"
+        elif pred == 1:
+            signal = "SELL"
+            trend = "DOWN"
+        else:
+            signal = "WAIT"
+            trend = "SIDE"
+
+        confidence = prob * 100
+
     else:
         signal = "WAIT"
         trend = "SIDE"
+        confidence = 50
 
-    # ================= CANDLE CONTROL =================
-    if candle_start != last_candle:
-        last_candle = candle_start
-        last_signal = signal
-    else:
-        signal = last_signal
+    # anti spam stability
+    if signal == last_signal and confidence < 70:
+        signal = "WAIT"
 
-    confidence = min(95, 55 + abs(score))
-
-    # ================= LOGGING (LEARNING MEMORY) =================
-    log_signal(signal, prices[-1], r)
+    last_signal = signal
 
     return {
         "signal": signal,
-        "confidence": round(confidence, 2),
-        "probability": round(probability, 2),
+        "confidence": round(confidence,2),
         "trend": trend,
-        "market": "LIVE",
+        "market": "ML-LIVE",
         "risk": "MEDIUM",
-        "strength": "STRONG" if abs(score) > 50 else "MEDIUM",
+        "strength": "STRONG" if confidence > 80 else "MEDIUM",
 
-        "price": round(prices[-1], 2),
-        "rsi": round(r, 2),
-        "ema20": round(ema20, 2),
-        "ema50": round(ema50, 2),
-        "macd": round(m, 4),
+        "price": round(prices[-1],2),
+        "rsi": round(rsi(prices),2),
+        "ema20": round(ema(prices,20),2),
+        "ema50": round(ema(prices,50),2),
+        "macd": round(macd(prices),4),
 
-        "winrate": calculate_winrate(),
         "timestamp": int(time.time())
     }

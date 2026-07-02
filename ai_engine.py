@@ -3,6 +3,7 @@ import time
 
 last_candle = -1
 
+
 def ema(data, period):
     if len(data) < period:
         return data[-1] if data else 0
@@ -14,6 +15,7 @@ def ema(data, period):
         result = alpha * p + (1 - alpha) * result
 
     return result
+
 
 def rsi(data, period=14):
     if len(data) < period + 1:
@@ -34,16 +36,17 @@ def rsi(data, period=14):
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
+
 def macd(data):
     if len(data) < 30:
         return 0
     return ema(data, 12) - ema(data, 26)
 
-def ai_engine(prices, candle_start):
 
+def ai_engine(prices, candle_start):
     global last_candle
 
-    if len(prices) < 30:
+    if len(prices) < 50:
         return {
             "signal": "WAIT",
             "confidence": 50,
@@ -53,27 +56,21 @@ def ai_engine(prices, candle_start):
             "strength": "NONE",
             "price": prices[-1] if prices else 0,
             "rsi": 50,
-            "ema20": 0,
-            "ema50": 0,
-            "macd": 0,
             "probability": 0,
             "timestamp": int(time.time())
         }
 
-    # candle sync lock
+    # prevent duplicate candle spam
     if candle_start == last_candle:
         return {
             "signal": "WAIT",
             "confidence": 50,
             "trend": "SIDE",
-            "market": "HOLD",
+            "market": "SYNCED",
             "risk": "LOW",
             "strength": "NONE",
             "price": prices[-1],
             "rsi": rsi(prices),
-            "ema20": ema(prices, 20),
-            "ema50": ema(prices, 50),
-            "macd": macd(prices),
             "probability": 0,
             "timestamp": int(time.time())
         }
@@ -83,29 +80,33 @@ def ai_engine(prices, candle_start):
     r = rsi(prices)
     m = macd(prices)
 
-    momentum = prices[-1] - prices[-10]
+    momentum = prices[-1] - prices[-15]
 
     score = 0
 
+    # TREND
     if ema20 > ema50:
-        score += 35
+        score += 40
     else:
-        score -= 35
+        score -= 40
 
-    if r < 45:
+    # RSI
+    if r < 40:
         score += 25
-    elif r > 55:
+    elif r > 60:
         score -= 25
 
+    # MACD
     if m > 0:
         score += 20
     else:
         score -= 20
 
-    if momentum > 0.5:
-        score += 20
-    elif momentum < -0.5:
-        score -= 20
+    # momentum filter (stronger)
+    if momentum > 0.8:
+        score += 15
+    elif momentum < -0.8:
+        score -= 15
 
     probability = min(99, max(1, 50 + score))
 
@@ -126,7 +127,7 @@ def ai_engine(prices, candle_start):
         "confidence": min(95, 55 + abs(score)),
         "probability": probability,
         "trend": trend,
-        "market": "SYNCED",
+        "market": "LIVE",
         "risk": "MEDIUM",
         "strength": "STRONG" if abs(score) > 60 else "MEDIUM",
         "price": round(prices[-1], 2),

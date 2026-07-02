@@ -55,7 +55,7 @@ def macd(data):
 
 
 # ==========================
-# LEVEL 7 STABLE AI ENGINE
+# LEVEL 7 FINAL STABLE ENGINE
 # ==========================
 def ai_engine(prices, candle_start):
 
@@ -103,7 +103,6 @@ def ai_engine(prices, candle_start):
     r = rsi(prices)
     m = macd(prices)
 
-    # safer momentum (FIXED)
     momentum = prices[-1] - prices[-15] if len(prices) > 15 else 0
 
     score = 0
@@ -111,48 +110,42 @@ def ai_engine(prices, candle_start):
     # ==========================
     # TREND (EMA)
     # ==========================
-    if ema20 > ema50:
-        score += 35
-    else:
-        score -= 35
+    score += 35 if ema20 > ema50 else -35
 
     # ==========================
-    # RSI (balanced zone)
+    # RSI (SMOOTH ZONE FIX)
     # ==========================
     if r > 60:
-        score += 20
+        score += 18
     elif r < 40:
-        score -= 20
+        score -= 18
 
     # ==========================
     # MACD
     # ==========================
-    if m > 0:
-        score += 25
-    else:
-        score -= 25
+    score += 22 if m > 0 else -22
 
     # ==========================
-    # MOMENTUM (smoothed)
+    # MOMENTUM (REDUCED NOISE)
     # ==========================
-    if momentum > 1.5:
-        score += 15
-    elif momentum < -1.5:
-        score -= 15
+    if momentum > 1.2:
+        score += 12
+    elif momentum < -1.2:
+        score -= 12
 
     # ==========================
-    # PROBABILITY
+    # PROBABILITY (SMOOTHED)
     # ==========================
-    probability = max(1, min(99, 50 + score))
+    probability = max(5, min(95, 50 + (score * 0.6)))
 
     # ==========================
-    # SIGNAL THRESHOLD (IMPORTANT FIX)
+    # SIGNAL THRESHOLD (STABLE)
     # ==========================
-    if score >= 50:
+    if score >= 48:
         signal = "BUY"
         trend = "UP"
 
-    elif score <= -50:
+    elif score <= -48:
         signal = "SELL"
         trend = "DOWN"
 
@@ -160,15 +153,18 @@ def ai_engine(prices, candle_start):
         signal = "WAIT"
         trend = "SIDE"
 
-    confidence = min(95, 60 + abs(score))
+    # ==========================
+    # CONFIDENCE (FIXED SCALING)
+    # ==========================
+    confidence = min(92, 55 + (abs(score) * 0.7))
 
     last_candle = candle_start
 
     return {
 
         "signal": signal,
-        "confidence": confidence,
-        "probability": probability,
+        "confidence": round(confidence, 2),
+        "probability": round(probability, 2),
         "trend": trend,
         "market": "LIVE",
         "risk": "MEDIUM",

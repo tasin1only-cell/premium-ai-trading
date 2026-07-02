@@ -39,7 +39,6 @@ def rsi(data, period=14):
             losses.append(abs(diff))
 
     avg_gain = np.mean(gains) if gains else 0.01
-
     avg_loss = np.mean(losses) if losses else 0.01
 
     rs = avg_gain / avg_loss
@@ -59,7 +58,7 @@ def ai_engine(prices, candle_start):
 
     global last_candle
 
-    # ---------- SAFE MODE ----------
+    # ---------------- NO DATA ----------------
 
     if not prices:
 
@@ -87,9 +86,9 @@ def ai_engine(prices, candle_start):
 
         }
 
-    # ---------- WARMUP ----------
+    # ---------------- WARMUP ----------------
 
-    if len(prices) < 15:
+    if len(prices) < 20:
 
         return {
 
@@ -115,18 +114,6 @@ def ai_engine(prices, candle_start):
 
         }
 
-    # TEST MODE এ candle lock disable
-
-    # if candle_start == last_candle:
-    #
-    #     return {
-    #
-    #         "signal":"WAIT",
-    #
-    #         "market":"SYNCED"
-    #
-    #     }
-
     ema20 = ema(prices, 20)
 
     ema50 = ema(prices, 50)
@@ -149,13 +136,13 @@ def ai_engine(prices, candle_start):
 
         score -= 40
 
-    # RSI
+    # RSI (Trend Following)
 
-    if r < 40:
+    if r > 55:
 
         score += 25
 
-    elif r > 60:
+    elif r < 45:
 
         score -= 25
 
@@ -171,21 +158,21 @@ def ai_engine(prices, candle_start):
 
     # Momentum
 
-    if momentum > 1:
+    if momentum > 0.3:
 
         score += 15
 
-    elif momentum < -1:
+    elif momentum < -0.3:
 
         score -= 15
 
-    probability = min(
+    probability = max(
 
-        99,
+        1,
 
-        max(
+        min(
 
-            1,
+            99,
 
             50 + score
 
@@ -193,13 +180,13 @@ def ai_engine(prices, candle_start):
 
     )
 
-    if score >= 60:
+    if score >= 45:
 
         signal = "BUY"
 
         trend = "UP"
 
-    elif score <= -60:
+    elif score <= -45:
 
         signal = "SELL"
 
@@ -215,7 +202,7 @@ def ai_engine(prices, candle_start):
 
         95,
 
-        55 + abs(score)
+        60 + abs(score)
 
     )
 
@@ -239,7 +226,7 @@ def ai_engine(prices, candle_start):
 
             "STRONG"
 
-            if abs(score) > 60
+            if abs(score) >= 60
 
             else "MEDIUM",
 

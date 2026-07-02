@@ -3,39 +3,34 @@ import time
 
 last_candle = -1
 last_signal = "WAIT"
+signal_memory = []   # 🧠 short memory
 
 
+# ================= EMA =================
 def ema(data, period):
-
     if len(data) < period:
         return data[-1] if data else 0
 
     alpha = 2 / (period + 1)
-
     result = np.mean(data[:period])
 
     for p in data[period:]:
-
         result = alpha * p + (1 - alpha) * result
 
     return result
 
 
+# ================= RSI =================
 def rsi(data, period=14):
-
     if len(data) < period + 1:
         return 50
 
-    gains = []
-    losses = []
+    gains, losses = [], []
 
     for i in range(1, period + 1):
-
         diff = data[-i] - data[-i - 1]
-
         if diff > 0:
             gains.append(diff)
-
         else:
             losses.append(abs(diff))
 
@@ -43,350 +38,141 @@ def rsi(data, period=14):
     avg_loss = np.mean(losses) if losses else 0.01
 
     rs = avg_gain / avg_loss
-
     return 100 - (100 / (1 + rs))
 
 
+# ================= MACD =================
 def macd(data):
-
     if len(data) < 26:
         return 0
-
     return ema(data, 12) - ema(data, 26)
 
 
-# =====================================
-# LEVEL 8B HYBRID ENGINE
-# =====================================
+# ================= VOLATILITY =================
+def volatility(data, n=10):
+    if len(data) < n:
+        return 0
+
+    window = data[-n:]
+    return np.std(window)
+
+
+# ================= LEVEL 8C ENGINE =================
 def ai_engine(prices, candle_start):
 
-    global last_candle
-    global last_signal
+    global last_candle, last_signal, signal_memory
 
-    if len(prices) < 50:
-
+    if len(prices) < 40:
         return {
-
             "signal": "WAIT",
-
             "confidence": 50,
-
             "trend": "SIDE",
-
             "market": "WARMUP",
-
-            "market_state": "WARMUP",
-
-            "bias": "NEUTRAL",
-
-            "volatility": "LOW",
-
             "risk": "LOW",
-
             "strength": "NONE",
-
             "price": prices[-1] if prices else 0,
-
             "rsi": 50,
-
             "probability": 0,
-
             "timestamp": int(time.time())
-
         }
 
     ema20 = ema(prices, 20)
-
     ema50 = ema(prices, 50)
-
     r = rsi(prices)
-
     m = macd(prices)
+
+    vol = volatility(prices, 10)
 
     momentum = prices[-1] - prices[-5]
 
-    vol = np.std(prices[-20:])
-
     score = 0
 
-    # ======================
-    # TREND
-    # ======================
+    # ================= TREND =================
+    score += 30 if ema20 > ema50 else -30
 
-    if ema20 > ema50:
-
-        score += 30
-
-    else:
-
-        score -= 30
-
-    # ======================
-    # RSI
-    # ======================
-
-    if r > 60:
-
-        score += 20
-
-    elif r < 40:
-
-        score -= 20
-
-    # ======================
-    # MACD
-    # ======================
-
-    if m > 0:
-
-        score += 25
-
-    else:
-
-        score -= 25
-
-    # ======================
-    # MOMENTUM
-    # ======================
-
-    if momentum > 0.3:
-
+    # ================= RSI FILTER =================
+    if r > 62:
         score += 15
-
-    elif momentum < -0.3:
-
+    elif r < 38:
         score -= 15
 
-    # ======================
-    # SIGNAL
-    # ======================
+    # ================= MACD =================
+    score += 20 if m > 0 else -20
 
-    if score >= 40:
+    # ================= MOMENTUM =================
+    if momentum > 0.4:
+        score += 15
+    elif momentum < -0.4:
+        score -= 15
 
+    # ================= VOLATILITY FILTER (8C KEY) =================
+    if vol > 3.5:
+        score *= 0.6   # reduce fake spikes impact
+
+    # ================= SIDEWAYS DETECTION =================
+    flat_market = abs(ema20 - ema50) < 0.5 and vol < 2.0
+
+    if flat_market:
+        return {
+            "signal": "WAIT",
+            "confidence": 60,
+            "trend": "SIDE",
+            "market": "CHOP_ZONE",
+            "risk": "LOW",
+            "strength": "NONE",
+            "price": round(prices[-1], 2),
+            "rsi": round(r, 2),
+            "probability": 0,
+            "timestamp": int(time.time())
+        }
+
+    # ================= FINAL SCORE =================
+    probability = max(5, min(95, 50 + score))
+
+    if score >= 38:
         signal = "BUY"
-
         trend = "UP"
-
-    elif score <= -40:
-
+    elif score <= -38:
         signal = "SELL"
-
         trend = "DOWN"
-
     else:
-
         signal = "WAIT"
-
         trend = "SIDE"
 
-    # ======================
-    # VOLATILITY
-    # ======================
+    # ================= SIGNAL MEMORY (ANTI SPAM) =================
+    signal_memory.append(signal)
+    if len(signal_memory) > 5:
+        signal_memory.pop(0)
 
-    if vol < 15:
+    # if last 3 same → force WAIT (avoid fake trend lock)
+    if signal_memory.count(signal) >= 4:
+        signal = "WAIT"
+        trend = "SIDE"
 
-        volatility = "LOW"
-
-    elif vol < 40:
-
-        volatility = "MEDIUM"
-
+    # ================= CANDLE CONTROL =================
+    if candle_start != last_candle:
+        last_candle = candle_start
+        last_signal = signal
     else:
+        signal = last_signal
 
-        volatility = "HIGH"
-
-    # ======================
-    # BIAS
-    # ======================
-
-    if score > 30:
-
-        bias = "BULLISH"
-
-    elif score < -30:
-
-        bias = "BEARISH"
-
-    else:
-
-        bias = "NEUTRAL"
-
-    # ======================
-    # MARKET STATE
-    # ======================
-
-    if abs(ema20 - ema50) > 20:
-
-        market_state = "TRENDING"
-
-    elif volatility == "HIGH":
-
-        market_state = "VOLATILE"
-
-    else:
-
-        market_state = "SIDEWAYS"
-
-    # ======================
-    # PROBABILITY
-    # ======================
-
-    probability = max(
-
-        5,
-
-        min(
-
-            95,
-
-            50 + score * 0.7
-
-        )
-
-    )
-
-    # ======================
-    # CONFIDENCE
-    # ======================
-
-    confidence = min(
-
-        95,
-
-        60 + abs(score) * 0.5
-
-    )
-
-    # ======================
-    # SIGNAL MEMORY
-    # ======================
-
-    last_signal = signal
-
-    last_candle = candle_start
+    confidence = min(92, 55 + abs(score))
 
     return {
-
         "signal": signal,
-
-        "confidence":
-
-            round(
-
-                confidence,
-
-                2
-
-            ),
-
-        "probability":
-
-            round(
-
-                probability,
-
-                2
-
-            ),
-
+        "confidence": round(confidence, 2),
+        "probability": round(probability, 2),
         "trend": trend,
-
         "market": "LIVE",
+        "risk": "MEDIUM",
+        "strength": "STRONG" if abs(score) > 50 else "MEDIUM",
 
-        "market_state":
+        "price": round(prices[-1], 2),
+        "rsi": round(r, 2),
+        "ema20": round(ema20, 2),
+        "ema50": round(ema50, 2),
+        "macd": round(m, 4),
+        "volatility": round(vol, 3),
 
-            market_state,
-
-        "bias":
-
-            bias,
-
-        "volatility":
-
-            volatility,
-
-        "risk":
-
-            "LOW"
-
-            if volatility == "LOW"
-
-            else
-
-            "MEDIUM"
-
-            if volatility == "MEDIUM"
-
-            else
-
-            "HIGH",
-
-        "strength":
-
-            "STRONG"
-
-            if abs(score) >= 60
-
-            else
-
-            "MEDIUM",
-
-        "price":
-
-            round(
-
-                prices[-1],
-
-                2
-
-            ),
-
-        "rsi":
-
-            round(
-
-                r,
-
-                2
-
-            ),
-
-        "ema20":
-
-            round(
-
-                ema20,
-
-                2
-
-            ),
-
-        "ema50":
-
-            round(
-
-                ema50,
-
-                2
-
-            ),
-
-        "macd":
-
-            round(
-
-                m,
-
-                4
-
-            ),
-
-        "timestamp":
-
-            int(
-
-                time.time()
-
-            )
-
+        "timestamp": int(time.time())
     }

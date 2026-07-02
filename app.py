@@ -16,13 +16,14 @@ current_price = 100000.0
 
 
 # ==========================
-# TEST FEED (TREND MODE)
+# IMPROVED TEST FEED (SMOOTH TREND)
 # ==========================
 def get_binance_price():
 
     global current_price
 
-    move = random.uniform(-8, 8)
+    # smoother movement (LESS RANDOM SPIKE)
+    move = random.uniform(-2.5, 2.5)
 
     current_price += move
 
@@ -30,34 +31,41 @@ def get_binance_price():
 
 
 # ==========================
-# PRICE LOOP
+# PRICE LOOP (STABLE + SEED FIX)
 # ==========================
 def price_loop():
 
     global candle_start
 
-    last_price = current_price
-
     while True:
 
         price = get_binance_price()
 
-        if price is None:
-            price = last_price
+        if not prices:
 
-        if len(prices) == 0:
+            # better seed (avoid RSI 100 / flat EMA)
+            temp = price
 
-            prices.extend([price] * 60)
+            seed = []
+
+            for _ in range(60):
+
+                temp += random.uniform(-2, 2)
+
+                seed.append(round(temp, 2))
+
+            prices.extend(seed)
 
         else:
 
             prices.append(price)
 
-        last_price = price
-
+        # limit memory
         if len(prices) > 2000:
+
             prices.pop(0)
 
+        # candle sync (1 min)
         if int(time.time()) - candle_start >= 60:
 
             candle_start = int(time.time())
@@ -65,6 +73,9 @@ def price_loop():
         time.sleep(1)
 
 
+# ==========================
+# ROUTES
+# ==========================
 @app.route("/")
 def home():
 
@@ -104,9 +115,7 @@ def status():
 
             else 0,
 
-        "candle_start":
-
-            candle_start
+        "candle_start": candle_start
 
     })
 
@@ -121,6 +130,9 @@ def history():
     )
 
 
+# ==========================
+# START THREAD
+# ==========================
 threading.Thread(
 
     target=price_loop,

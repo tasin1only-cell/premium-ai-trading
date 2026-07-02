@@ -1,7 +1,7 @@
 import numpy as np
 import time
 
-last_signal_minute = -1
+last_candle = -1
 
 def ema(data, period):
     if len(data) < period:
@@ -14,7 +14,6 @@ def ema(data, period):
         result = alpha * p + (1 - alpha) * result
 
     return result
-
 
 def rsi(data, period=14):
     if len(data) < period + 1:
@@ -35,22 +34,19 @@ def rsi(data, period=14):
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
-
 def macd(data):
     if len(data) < 30:
         return 0
-
     return ema(data, 12) - ema(data, 26)
 
+def ai_engine(prices, candle_start):
 
-def ai_engine(prices):
-    global last_signal_minute
+    global last_candle
 
     if len(prices) < 30:
         return {
             "signal": "WAIT",
             "confidence": 50,
-            "probability": 0,
             "trend": "SIDE",
             "market": "WARMUP",
             "risk": "LOW",
@@ -59,18 +55,16 @@ def ai_engine(prices):
             "rsi": 50,
             "ema20": 0,
             "ema50": 0,
-            "macd": 0
+            "macd": 0,
+            "probability": 0,
+            "timestamp": int(time.time())
         }
 
-    now = time.time()
-    minute = int(now // 60)
-
-    # 🔥 LOCK FIX (no spam)
-    if minute == last_signal_minute:
+    # candle sync lock
+    if candle_start == last_candle:
         return {
             "signal": "WAIT",
             "confidence": 50,
-            "probability": 0,
             "trend": "SIDE",
             "market": "HOLD",
             "risk": "LOW",
@@ -79,13 +73,16 @@ def ai_engine(prices):
             "rsi": rsi(prices),
             "ema20": ema(prices, 20),
             "ema50": ema(prices, 50),
-            "macd": macd(prices)
+            "macd": macd(prices),
+            "probability": 0,
+            "timestamp": int(time.time())
         }
 
     ema20 = ema(prices, 20)
     ema50 = ema(prices, 50)
     r = rsi(prices)
     m = macd(prices)
+
     momentum = prices[-1] - prices[-10]
 
     score = 0
@@ -115,26 +112,27 @@ def ai_engine(prices):
     if score >= 60:
         signal = "BUY"
         trend = "UP"
-        last_signal_minute = minute
     elif score <= -60:
         signal = "SELL"
         trend = "DOWN"
-        last_signal_minute = minute
     else:
         signal = "WAIT"
         trend = "SIDE"
+
+    last_candle = candle_start
 
     return {
         "signal": signal,
         "confidence": min(95, 55 + abs(score)),
         "probability": probability,
         "trend": trend,
-        "market": "ACTIVE",
+        "market": "SYNCED",
         "risk": "MEDIUM",
         "strength": "STRONG" if abs(score) > 60 else "MEDIUM",
         "price": round(prices[-1], 2),
         "rsi": round(r, 2),
         "ema20": round(ema20, 2),
         "ema50": round(ema50, 2),
-        "macd": round(m, 4)
-        }
+        "macd": round(m, 4),
+        "timestamp": int(time.time())
+    }

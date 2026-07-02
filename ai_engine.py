@@ -2,6 +2,7 @@ import numpy as np
 import time
 
 last_candle = -1
+last_signal = "WAIT"
 
 
 def ema(data, period):
@@ -14,7 +15,6 @@ def ema(data, period):
     result = np.mean(data[:period])
 
     for p in data[period:]:
-
         result = alpha * p + (1 - alpha) * result
 
     return result
@@ -34,7 +34,6 @@ def rsi(data, period=14):
 
         if diff > 0:
             gains.append(diff)
-
         else:
             losses.append(abs(diff))
 
@@ -55,17 +54,17 @@ def macd(data):
 
 
 # ==========================
-# LEVEL 7 FINAL STABLE ENGINE
+# LEVEL 7 STABLE + ANTI STUCK ENGINE
 # ==========================
 def ai_engine(prices, candle_start):
 
     global last_candle
+    global last_signal
 
     # ---------- NO DATA ----------
     if not prices or len(prices) < 30:
 
         return {
-
             "signal": "WAIT",
             "confidence": 50,
             "trend": "SIDE",
@@ -76,14 +75,12 @@ def ai_engine(prices, candle_start):
             "rsi": 50,
             "probability": 0,
             "timestamp": int(time.time())
-
         }
 
     # ---------- WARMUP ----------
     if len(prices) < 50:
 
         return {
-
             "signal": "WAIT",
             "confidence": 50,
             "trend": "SIDE",
@@ -94,7 +91,6 @@ def ai_engine(prices, candle_start):
             "rsi": 50,
             "probability": 0,
             "timestamp": int(time.time())
-
         }
 
     ema20 = ema(prices, 20)
@@ -113,12 +109,12 @@ def ai_engine(prices, candle_start):
     score += 35 if ema20 > ema50 else -35
 
     # ==========================
-    # RSI (SMOOTH ZONE FIX)
+    # RSI FILTER (SMOOTH)
     # ==========================
-    if r > 60:
-        score += 18
-    elif r < 40:
-        score -= 18
+    if r > 62:
+        score += 20
+    elif r < 38:
+        score -= 20
 
     # ==========================
     # MACD
@@ -126,20 +122,20 @@ def ai_engine(prices, candle_start):
     score += 22 if m > 0 else -22
 
     # ==========================
-    # MOMENTUM (REDUCED NOISE)
+    # MOMENTUM (NOISE REDUCED)
     # ==========================
-    if momentum > 1.2:
+    if momentum > 1.0:
         score += 12
-    elif momentum < -1.2:
+    elif momentum < -1.0:
         score -= 12
 
     # ==========================
     # PROBABILITY (SMOOTHED)
     # ==========================
-    probability = max(5, min(95, 50 + (score * 0.6)))
+    probability = max(5, min(95, 50 + score))
 
     # ==========================
-    # SIGNAL THRESHOLD (STABLE)
+    # SIGNAL GENERATION
     # ==========================
     if score >= 48:
         signal = "BUY"
@@ -154,11 +150,20 @@ def ai_engine(prices, candle_start):
         trend = "SIDE"
 
     # ==========================
-    # CONFIDENCE (FIXED SCALING)
+    # ANTI STUCK SIGNAL FIX
     # ==========================
-    confidence = min(92, 55 + (abs(score) * 0.7))
+    # prevent same signal spam
+    if signal == last_signal and abs(score) < 55:
+        signal = "WAIT"
+        trend = "SIDE"
 
+    last_signal = signal
     last_candle = candle_start
+
+    # ==========================
+    # CONFIDENCE
+    # ==========================
+    confidence = min(90, 55 + abs(score) * 0.7)
 
     return {
 

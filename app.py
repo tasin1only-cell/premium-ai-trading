@@ -9,21 +9,19 @@ app = Flask(__name__)
 CORS(app)
 
 prices = []
-
 candle_start = int(time.time())
 
 current_price = 100000.0
 
 
 # ==========================
-# IMPROVED PRICE FEED (MORE DYNAMIC)
+# PRICE GENERATOR (SMOOTH + REALISTIC)
 # ==========================
 def get_binance_price():
-
     global current_price
 
-    # slightly higher volatility (prevents stuck signals)
-    move = random.uniform(-5, 5)
+    # smooth movement (not too random)
+    move = random.uniform(-3.5, 3.5)
 
     current_price += move
 
@@ -31,44 +29,37 @@ def get_binance_price():
 
 
 # ==========================
-# PRICE LOOP (ANTI-STUCK ENGINE)
+# PRICE LOOP (STABLE ENGINE)
 # ==========================
 def price_loop():
-
     global candle_start
+
+    seeded = False
 
     while True:
 
         price = get_binance_price()
 
-        # INITIAL SEED (better market shape)
-        if len(prices) < 60:
+        # ---------- INITIAL SEED ONCE ----------
+        if not seeded:
+            temp = price
+            seed = []
 
-            if not prices:
+            for _ in range(60):
+                temp += random.uniform(-2.5, 2.5)
+                seed.append(round(temp, 2))
 
-                temp = price
-                seed = []
-
-                for _ in range(60):
-
-                    temp += random.uniform(-3, 3)
-                    seed.append(round(temp, 2))
-
-                prices.extend(seed)
-
-            else:
-
-                prices.append(price)
+            prices.extend(seed)
+            seeded = True
 
         else:
-
             prices.append(price)
 
-        # memory control
+        # ---------- MEMORY CONTROL ----------
         if len(prices) > 2000:
             prices.pop(0)
 
-        # candle sync
+        # ---------- CANDLE SYNC ----------
         if int(time.time()) - candle_start >= 60:
             candle_start = int(time.time())
 
@@ -104,7 +95,7 @@ def history():
 
 
 # ==========================
-# THREAD START
+# START THREAD
 # ==========================
 threading.Thread(
     target=price_loop,

@@ -43,15 +43,17 @@ def macd(data):
     return ema(data, 12) - ema(data, 26)
 
 
+# 🔥 SAFE ENGINE
 def ai_engine(prices, candle_start):
     global last_candle
 
-    if len(prices) < 50:
+    # ❌ safety: no data
+    if not prices or len(prices) < 50 or prices[-1] == 0:
         return {
             "signal": "WAIT",
             "confidence": 50,
             "trend": "SIDE",
-            "market": "WARMUP",
+            "market": "NO_DATA",
             "risk": "LOW",
             "strength": "NONE",
             "price": prices[-1] if prices else 0,
@@ -60,7 +62,7 @@ def ai_engine(prices, candle_start):
             "timestamp": int(time.time())
         }
 
-    # prevent duplicate candle spam
+    # candle lock protection
     if candle_start == last_candle:
         return {
             "signal": "WAIT",
@@ -80,29 +82,24 @@ def ai_engine(prices, candle_start):
     r = rsi(prices)
     m = macd(prices)
 
-    momentum = prices[-1] - prices[-15]
+    # safer momentum
+    momentum = prices[-1] - prices[-10] if len(prices) > 10 else 0
 
     score = 0
 
     # TREND
-    if ema20 > ema50:
-        score += 40
-    else:
-        score -= 40
+    score += 40 if ema20 > ema50 else -40
 
-    # RSI
+    # RSI FILTER
     if r < 40:
         score += 25
     elif r > 60:
         score -= 25
 
     # MACD
-    if m > 0:
-        score += 20
-    else:
-        score -= 20
+    score += 20 if m > 0 else -20
 
-    # momentum filter (stronger)
+    # MOMENTUM
     if momentum > 0.8:
         score += 15
     elif momentum < -0.8:

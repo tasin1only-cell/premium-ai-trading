@@ -6,12 +6,10 @@ last_signal = "WAIT"
 
 
 def ema(data, period):
-
     if len(data) < period:
         return data[-1] if data else 0
 
     alpha = 2 / (period + 1)
-
     result = np.mean(data[:period])
 
     for p in data[period:]:
@@ -21,7 +19,6 @@ def ema(data, period):
 
 
 def rsi(data, period=14):
-
     if len(data) < period + 1:
         return 50
 
@@ -29,9 +26,7 @@ def rsi(data, period=14):
     losses = []
 
     for i in range(1, period + 1):
-
         diff = data[-i] - data[-i - 1]
-
         if diff > 0:
             gains.append(diff)
         else:
@@ -41,28 +36,20 @@ def rsi(data, period=14):
     avg_loss = np.mean(losses) if losses else 0.01
 
     rs = avg_gain / avg_loss
-
     return 100 - (100 / (1 + rs))
 
 
 def macd(data):
-
     if len(data) < 26:
         return 0
-
     return ema(data, 12) - ema(data, 26)
 
 
-# ==========================
-# FINAL STABLE AI ENGINE (FIXED CANDLE LOGIC)
-# ==========================
 def ai_engine(prices, candle_start):
 
-    global last_candle
-    global last_signal
+    global last_candle, last_signal
 
-    # ---------- NO DATA ----------
-    if not prices or len(prices) < 30:
+    if len(prices) < 30:
         return {
             "signal": "WAIT",
             "confidence": 50,
@@ -76,103 +63,54 @@ def ai_engine(prices, candle_start):
             "timestamp": int(time.time())
         }
 
-    # ---------- WARMUP ----------
-    if len(prices) < 50:
-        return {
-            "signal": "WAIT",
-            "confidence": 50,
-            "trend": "SIDE",
-            "market": "WARMUP",
-            "risk": "LOW",
-            "strength": "NONE",
-            "price": round(prices[-1], 2),
-            "rsi": 50,
-            "probability": 0,
-            "timestamp": int(time.time())
-        }
-
     ema20 = ema(prices, 20)
     ema50 = ema(prices, 50)
-
     r = rsi(prices)
     m = macd(prices)
 
-    momentum = prices[-1] - prices[-15] if len(prices) > 15 else 0
+    momentum = prices[-1] - prices[-5]  # 🔥 faster reaction
 
     score = 0
 
-    # ==========================
-    # TREND
-    # ==========================
-    score += 35 if ema20 > ema50 else -35
+    if ema20 > ema50:
+        score += 30
+    else:
+        score -= 30
 
-    # ==========================
-    # RSI FILTER
-    # ==========================
-    if r > 62:
+    if r > 55:
+        score += 15
+    elif r < 45:
+        score -= 15
+
+    if m > 0:
         score += 20
-    elif r < 38:
+    else:
         score -= 20
 
-    # ==========================
-    # MACD
-    # ==========================
-    score += 22 if m > 0 else -22
+    if momentum > 0.5:
+        score += 20
+    elif momentum < -0.5:
+        score -= 20
 
-    # ==========================
-    # MOMENTUM
-    # ==========================
-    if momentum > 1.0:
-        score += 12
-    elif momentum < -1.0:
-        score -= 12
+    probability = max(1, min(99, 50 + score))
 
-    # ==========================
-    # SIGNAL GENERATION
-    # ==========================
-    if score >= 48:
+    # 🔥 LOWER THRESHOLD (IMPORTANT FIX)
+    if score >= 35:
         signal = "BUY"
         trend = "UP"
-    elif score <= -48:
+    elif score <= -35:
         signal = "SELL"
         trend = "DOWN"
     else:
         signal = "WAIT"
         trend = "SIDE"
 
-    # ==========================
-    # 🔥 ANTI STUCK + CANDLE FIX
-    # ==========================
-    is_new_candle = (candle_start != last_candle)
+    # 🔥 allow signal change every candle
+    if candle_start != last_candle:
+        last_candle = candle_start
+        last_signal = signal
 
-    if not is_new_candle:
-        # same candle → no spam signal change
-        return {
-            "signal": "WAIT",
-            "confidence": 50,
-            "trend": "SIDE",
-            "market": "HOLDING",
-            "risk": "LOW",
-            "strength": "NONE",
-            "price": round(prices[-1], 2),
-            "rsi": round(r, 2),
-            "probability": 0,
-            "timestamp": int(time.time())
-        }
-
-    # avoid repeated same signal spam
-    if signal == last_signal and abs(score) < 55:
-        signal = "WAIT"
-        trend = "SIDE"
-
-    last_signal = signal
-    last_candle = candle_start
-
-    # ==========================
-    # CONFIDENCE + PROBABILITY
-    # ==========================
-    probability = max(5, min(95, 50 + score))
-    confidence = min(90, 55 + abs(score) * 0.7)
+    confidence = min(95, 50 + abs(score))
 
     return {
         "signal": signal,
@@ -181,13 +119,12 @@ def ai_engine(prices, candle_start):
         "trend": trend,
         "market": "LIVE",
         "risk": "MEDIUM",
-        "strength": "STRONG" if abs(score) >= 60 else "MEDIUM",
+        "strength": "STRONG" if abs(score) > 50 else "MEDIUM",
 
         "price": round(prices[-1], 2),
         "rsi": round(r, 2),
         "ema20": round(ema20, 2),
         "ema50": round(ema50, 2),
         "macd": round(m, 4),
-
         "timestamp": int(time.time())
     }

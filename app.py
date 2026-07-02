@@ -1,40 +1,67 @@
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
+import requests
 import threading
 import time
-import random
-import requests
-from ai_engine import ai_engine   # ✅ FIXED IMPORT
+from ai_engine import ai_engine
 
 app = Flask(__name__)
 CORS(app)
 
 # ======================
-# GLOBAL STATE
+# GLOBAL STATE (REAL DATA)
 # ======================
 prices = []
-last_signal_time = 0
+last_update_time = 0
 
 
 # ======================
-# PRICE FEED
+# BINANCE PRICE FEED (REAL)
 # ======================
 def price_loop():
-    price = 100
+    global prices
 
     while True:
-        price += random.uniform(-1.3, 1.3)
-        prices.append(price)
+        try:
+            url = "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=100"
+            data = requests.get(url, timeout=5).json()
 
-        if len(prices) > 1000:
-            prices.pop(0)
+            new_prices = []
 
-        time.sleep(1)
+            for c in data:
+                close_price = float(c[4])
+                new_prices.append(close_price)
+
+            prices = new_prices
+
+        except Exception as e:
+            print("Price fetch error:", e)
+
+        time.sleep(10)  # update every 10 sec
+
+
+# start thread
+threading.Thread(target=price_loop, daemon=True).start()
 
 
 # ======================
-# REAL CANDLES (BINANCE)
+# ROUTES
 # ======================
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+@app.route("/api/signal")
+def signal():
+    return jsonify(ai_engine(prices))
+
+
+@app.route("/api/history")
+def history():
+    return jsonify(prices[-100:])
+
+
 @app.route("/api/candles")
 def candles():
     try:
@@ -42,6 +69,7 @@ def candles():
         data = requests.get(url, timeout=5).json()
 
         candles = []
+
         for c in data:
             candles.append({
                 "time": c[0],
@@ -57,37 +85,12 @@ def candles():
         return jsonify([])
 
 
-# ======================
-# ROUTES
-# ======================
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-@app.route("/api/signal")
-def signal():
-    result = ai_engine(prices)
-    return jsonify(result)
-
-
-@app.route("/api/history")
-def history():
-    return jsonify(prices[-100:])
-
-
 @app.route("/debug")
 def debug():
     return {
         "price_count": len(prices),
-        "last_prices": prices[-5:] if prices else []
+        "last_price": prices[-1] if prices else 0
     }
-
-
-# ======================
-# START THREAD
-# ======================
-threading.Thread(target=price_loop, daemon=True).start()
 
 
 # ======================

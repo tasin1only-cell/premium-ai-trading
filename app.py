@@ -1,23 +1,18 @@
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 import time
-import threading
-import random
 
 from ai_engine import ai_engine
 from market_feed import prices
+from analytics import calculate_winrate
 
 app = Flask(__name__)
 CORS(app)
 
+# ==========================
+# CANDLE CONTROL
+# ==========================
 candle_start = int(time.time())
-
-
-# ==========================
-# SAFETY: ENSURE PRICE EXISTS
-# ==========================
-def safe_last_price():
-    return prices[-1] if prices else 100000.0
 
 
 # ==========================
@@ -29,54 +24,50 @@ def home():
 
 
 # ==========================
-# SIGNAL API (LEVEL 8B)
+# SIGNAL API (MAIN)
 # ==========================
 @app.route("/api/signal")
 def signal():
 
     global candle_start
 
-    now = int(time.time())
-
-    # candle reset (1 minute)
-    if now - candle_start >= 60:
-        candle_start = now
+    # reset candle every 60 sec
+    if int(time.time()) - candle_start >= 60:
+        candle_start = int(time.time())
 
     return jsonify(
-        ai_engine(
-            prices,
-            candle_start
-        )
+        ai_engine(prices, candle_start)
     )
 
 
 # ==========================
-# STATUS API (FIXED)
+# STATUS API
 # ==========================
 @app.route("/api/status")
 def status():
 
     return jsonify({
-
         "running": True,
-
-        "market": "BINANCE LIVE",
-
+        "market": "LEVEL 9 AI ENGINE",
         "price_len": len(prices),
-
-        "last_price": safe_last_price(),
-
-        "candle_start": candle_start,
-
-        "feed_alive": len(prices) > 0,
-
-        "level": "8B HYBRID AI"
-
+        "last_price": prices[-1] if prices else 0,
+        "candle_start": candle_start
     })
 
 
 # ==========================
-# HISTORY API
+# ANALYTICS API (NEW LEVEL 9)
+# ==========================
+@app.route("/api/analytics")
+def analytics():
+
+    return jsonify(
+        calculate_winrate()
+    )
+
+
+# ==========================
+# PRICE HISTORY
 # ==========================
 @app.route("/api/history")
 def history():
@@ -87,29 +78,10 @@ def history():
 
 
 # ==========================
-# OPTIONAL DEBUG FEED
-# ==========================
-@app.route("/api/feed")
-def feed():
-
-    return jsonify({
-
-        "count": len(prices),
-
-        "last": safe_last_price(),
-
-        "status": "STREAMING"
-    })
-
-
-# ==========================
-# START SERVER
+# RUN SERVER
 # ==========================
 if __name__ == "__main__":
-
     app.run(
         host="0.0.0.0",
-        port=10000,
-        debug=False,
-        threaded=True
-        )
+        port=10000
+    )

@@ -2,21 +2,15 @@
 <html lang="en">
 
 <head>
-
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<meta name="viewport"
-content="width=device-width, initial-scale=1.0">
+<title>AI Trading Pro v4 - Level 8B</title>
 
-<title>AI Trading Pro v4</title>
-
-<link rel="stylesheet"
-href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script src="https://s3.tradingview.com/tv.js"></script>
-
 </head>
 
 <body>
@@ -25,112 +19,57 @@ href="/static/style.css">
 
 <h2>AI Trading Pro v4</h2>
 
-<div id="clock">
+<div id="clock">00:00:00</div>
 
-00:00:00
+<!-- MAIN SIGNAL -->
+<div class="box" id="trendBox">TREND : --</div>
+<div class="box" id="signalBox">SIGNAL : --</div>
+<div class="box" id="conf">Confidence : --</div>
 
-</div>
+<div class="box" id="marketBox">Market : --</div>
+<div class="box" id="riskBox">Risk : --</div>
+<div class="box" id="probBox">Probability : --</div>
+<div class="box" id="strengthBox">Strength : --</div>
 
-<div class="box" id="trendBox">
+<!-- LEVEL 8B NEW BOXES -->
+<div class="box" id="biasBox">Bias : --</div>
+<div class="box" id="volatilityBox">Volatility : --</div>
+<div class="box" id="marketStateBox">Market State : --</div>
 
-TREND : --
-
-</div>
-
-<div class="box" id="signalBox">
-
-SIGNAL : --
-
-</div>
-
-<div class="box" id="conf">
-
-Confidence : --
-
-</div>
-
-<div class="box" id="marketBox">
-
-Market : --
-
-</div>
-
-<div class="box" id="riskBox">
-
-Risk : --
-
-</div>
-
-<div class="box" id="probBox">
-
-Probability : --
-
-</div>
-
-<div class="box" id="strengthBox">
-
-Strength : --
-
-</div>
-
+<!-- RSI BAR -->
 <div class="rsi-bar">
-
-<div id="rsiFill"></div>
-
+    <div id="rsiFill"></div>
 </div>
 
+<!-- ASSET SELECT -->
 <select id="asset" onchange="changeAsset()">
-
 <option>EUR/USD</option>
-
 <option>GBP/USD</option>
-
 <option>USD/JPY</option>
-
 <option selected>BTC/USD</option>
-
 <option>ETH/USD</option>
-
 <option>XAU/USD</option>
-
 </select>
 
+<!-- CHART -->
 <div class="chart-card">
-
-<div id="tradingview_chart"
-style="width:100%;height:320px;">
-
+    <div id="tradingview_chart"></div>
 </div>
 
-</div>
-
+<!-- CANDLE TIMER -->
 <div class="box" id="candle">
-
 Candle Ends : 00:59
-
 </div>
 
+<!-- HISTORY -->
 <div class="history">
-
-<h4>
-
-Signal History
-
-</h4>
-
-<div id="historyLog">
-
+<h4>Signal History</h4>
+<div id="historyLog"></div>
 </div>
 
 </div>
 
-</div>
-
-<script defer
-src="/static/script.js">
-
-</script>
+<script src="/static/script.js" defer></script>
 
 </body>
-
 </html>

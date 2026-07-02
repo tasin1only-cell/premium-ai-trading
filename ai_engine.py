@@ -3,7 +3,6 @@ import time
 
 last_signal_minute = -1
 
-
 def ema(data, period):
     if len(data) < period:
         return data[-1] if data else 0
@@ -45,6 +44,7 @@ def macd(data):
 
 
 def ai_engine(prices):
+
     global last_signal_minute
 
     if len(prices) < 30:
@@ -64,16 +64,10 @@ def ai_engine(prices):
             "timestamp": int(time.time())
         }
 
-    now_minute = int(time.time() // 60)
+    minute = int(time.time() // 60)
 
-    ema20 = ema(prices, 20)
-    ema50 = ema(prices, 50)
-    r = rsi(prices)
-    m = macd(prices)
-    momentum = prices[-1] - prices[-10]
-
-    # candle lock
-    if now_minute == last_signal_minute:
+    # 🔒 1-minute lock
+    if minute == last_signal_minute:
         return {
             "signal": "WAIT",
             "confidence": 50,
@@ -83,12 +77,18 @@ def ai_engine(prices):
             "risk": "LOW",
             "strength": "NONE",
             "price": prices[-1],
-            "rsi": r,
-            "ema20": ema20,
-            "ema50": ema50,
-            "macd": m,
+            "rsi": rsi(prices),
+            "ema20": ema(prices, 20),
+            "ema50": ema(prices, 50),
+            "macd": macd(prices),
             "timestamp": int(time.time())
         }
+
+    ema20 = ema(prices, 20)
+    ema50 = ema(prices, 50)
+    r = rsi(prices)
+    m = macd(prices)
+    momentum = prices[-1] - prices[-10]
 
     score = 0
 
@@ -107,9 +107,9 @@ def ai_engine(prices):
     else:
         score -= 20
 
-    if momentum > 0:
+    if momentum > 0.5:
         score += 15
-    else:
+    elif momentum < -0.5:
         score -= 15
 
     probability = min(99, max(1, 50 + score))
@@ -117,12 +117,12 @@ def ai_engine(prices):
     if score >= 60:
         signal = "BUY"
         trend = "UP"
-        last_signal_minute = now_minute
+        last_signal_minute = minute
 
     elif score <= -60:
         signal = "SELL"
         trend = "DOWN"
-        last_signal_minute = now_minute
+        last_signal_minute = minute
 
     else:
         signal = "WAIT"
@@ -142,4 +142,4 @@ def ai_engine(prices):
         "ema50": round(ema50, 2),
         "macd": round(m, 4),
         "timestamp": int(time.time())
-    }
+        }

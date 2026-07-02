@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app)
 
 prices = []
-candle_start = int(time.time() // 60)  # IMPORTANT FIX
+candle_start = int(time.time())
 
 def price_loop():
     price = 100
@@ -23,27 +23,27 @@ def price_loop():
 
         time.sleep(1)
 
-# ======================
-# SIGNAL API
-# ======================
-@app.route("/api/signal")
-def signal():
-    return jsonify(ai_engine(prices))
-
-# ======================
-# STATUS (IMPORTANT FOR SYNC)
-# ======================
-@app.route("/api/status")
-def status():
-    global candle_start
-    return jsonify({
-        "candle_start": candle_start,
-        "server_time": int(time.time())
-    })
+        # NEW candle every 60 sec
+        global candle_start
+        if int(time.time()) - candle_start >= 60:
+            candle_start = int(time.time())
 
 @app.route("/")
 def home():
     return render_template("index.html")
+
+@app.route("/api/signal")
+def signal():
+    data = ai_engine(prices)
+    data["candle_start"] = candle_start
+    return jsonify(data)
+
+@app.route("/api/status")
+def status():
+    return jsonify({
+        "candle_start": candle_start,
+        "price_count": len(prices)
+    })
 
 threading.Thread(target=price_loop, daemon=True).start()
 

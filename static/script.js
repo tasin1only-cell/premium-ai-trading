@@ -1,107 +1,40 @@
-console.log("LEVEL 7 STABLE AI LOADED");
+console.log("AI TRADING PRO V4 FIXED LOADED");
 
 const API_URL = "/api/signal";
 
-let running = false;
-let lastSignal = "";
 let lastSignalTime = 0;
+let lastSignal = "";
+let running = false;
 
 
 /* ================= CLOCK ================= */
-
 setInterval(() => {
-
     const el = document.getElementById("clock");
-
-    if (el) {
-        el.innerText = new Date().toLocaleTimeString();
-    }
-
+    if (el) el.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
 
 /* ================= CANDLE TIMER ================= */
-
 setInterval(() => {
-
     const el = document.getElementById("candle");
-
     if (!el) return;
 
     const sec = new Date().getSeconds();
     const remaining = 60 - sec;
 
-    el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
-
+    el.innerText = `Candle Ends : 00:${String(remaining).padStart(2,"0")}`;
 }, 1000);
 
 
-/* ================= CHART ================= */
-
-function loadChart(symbol = "BINANCE:BTCUSDT") {
-
-    const el = document.getElementById("tradingview_chart");
-
-    if (!el) return;
-
-    el.innerHTML = "";
-
-    if (typeof TradingView === "undefined") {
-
-        setTimeout(() => loadChart(symbol), 1000);
-        return;
-    }
-
-    new TradingView.widget({
-
-        container_id: "tradingview_chart",
-        width: "100%",
-        height: 320,
-        symbol: symbol,
-        interval: "1",
-        theme: "dark",
-        style: "1",
-        locale: "en",
-        autosize: true,
-        hide_side_toolbar: true,
-        allow_symbol_change: false
-    });
-}
-
-
-/* ================= ASSET ================= */
-
-function changeAsset() {
-
-    const asset = document.getElementById("asset").value;
-
-    const map = {
-
-        "EUR/USD": "FX:EURUSD",
-        "GBP/USD": "FX:GBPUSD",
-        "USD/JPY": "FX:USDJPY",
-        "BTC/USD": "BINANCE:BTCUSDT",
-        "ETH/USD": "BINANCE:ETHUSDT",
-        "XAU/USD": "OANDA:XAUUSD"
-    };
-
-    loadChart(map[asset]);
-}
-
-
-/* ================= UI ================= */
-
+/* ================= HELPERS ================= */
 function set(id, val) {
     const el = document.getElementById(id);
     if (el) el.innerText = val;
 }
 
 
-/* ================= MAIN UI UPDATE (FIXED) ================= */
-
+/* ================= UI UPDATE ================= */
 function updateUI(d) {
-
-    const now = Date.now();
 
     set("signalBox", "SIGNAL : " + d.signal);
     set("trendBox", "TREND : " + d.trend);
@@ -111,27 +44,20 @@ function updateUI(d) {
     set("probBox", "Probability : " + d.probability + "%");
     set("strengthBox", "Strength : " + d.strength);
 
-    const fill = document.getElementById("rsiFill");
-    if (fill) fill.style.width = d.rsi + "%";
+    const rsiFill = document.getElementById("rsiFill");
+    if (rsiFill) rsiFill.style.width = d.rsi + "%";
 
+    // ================= SIGNAL HISTORY (CANDLE BASED) =================
+    const now = Date.now();
 
-    const log = document.getElementById("historyLog");
+    if (now - lastSignalTime > 55000) {
+        lastSignalTime = now;
 
-    if (log) {
+        const log = document.getElementById("historyLog");
 
-        const currentSignal = `${d.signal}_${d.price}`;
-
-        const isNewSignal = currentSignal !== lastSignal;
-
-        // 🔥 TIME + SIGNAL FILTER (IMPORTANT FIX)
-        if (isNewSignal && (now - lastSignalTime > 55000)) {
-
-            lastSignal = currentSignal;
-            lastSignalTime = now;
-
+        if (log) {
             const div = document.createElement("div");
             div.innerText = `${d.signal} | RSI ${d.rsi} | Price ${d.price}`;
-
             log.prepend(div);
 
             while (log.childNodes.length > 15) {
@@ -139,11 +65,12 @@ function updateUI(d) {
             }
         }
     }
+
+    lastSignal = d.signal;
 }
 
 
-/* ================= API ================= */
-
+/* ================= API CALL ================= */
 async function getSignal() {
 
     if (running) return;
@@ -152,28 +79,25 @@ async function getSignal() {
     try {
         const res = await fetch(API_URL + "?t=" + Date.now());
         const data = await res.json();
+
         updateUI(data);
 
     } catch (e) {
         console.log("API ERROR", e);
     }
 
-    setTimeout(() => running = false, 1000);
+    setTimeout(() => running = false, 800);
 }
 
 
-/* ================= BOT ================= */
-
+/* ================= BOT LOOP (FAST UPDATE) ================= */
 function startBot() {
     getSignal();
-    setInterval(getSignal, 5000);
+    setInterval(getSignal, 2000);   // 🔥 FAST SIGNAL UPDATE
 }
 
 
 /* ================= INIT ================= */
-
 window.onload = () => {
-
-    loadChart("BINANCE:BTCUSDT");
     startBot();
 };

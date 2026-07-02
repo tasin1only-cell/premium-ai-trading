@@ -11,14 +11,20 @@ CORS(app)
 prices = []
 
 # ======================
-# PRICE FEED (STABLE)
+# CANDLE BASED PRICE LOOP
 # ======================
 def price_loop():
     price = 100
+    candle_buffer = []
 
     while True:
         price += random.uniform(-1.2, 1.2)
-        prices.append(round(price, 2))
+        candle_buffer.append(price)
+
+        # 1 candle = 60 seconds
+        if len(candle_buffer) >= 60:
+            prices.append(candle_buffer[-1])  # CLOSE PRICE ONLY
+            candle_buffer = []
 
         if len(prices) > 2000:
             prices.pop(0)
@@ -26,49 +32,30 @@ def price_loop():
         time.sleep(1)
 
 
-# ======================
-# HOME
-# ======================
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# ======================
-# SIGNAL API
-# ======================
 @app.route("/api/signal")
 def signal():
     return jsonify(ai_engine(prices))
 
 
-# ======================
-# HISTORY
-# ======================
 @app.route("/api/history")
 def history():
     return jsonify(prices[-100:])
 
 
-# ======================
-# DEBUG
-# ======================
 @app.route("/debug")
 def debug():
     return {
-        "count": len(prices),
-        "last": prices[-5:] if prices else []
+        "price_count": len(prices),
+        "last_prices": prices[-5:]
     }
 
 
-# ======================
-# START THREAD
-# ======================
 threading.Thread(target=price_loop, daemon=True).start()
 
-
-# ======================
-# RUN
-# ======================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

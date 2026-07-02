@@ -10,12 +10,8 @@ CORS(app)
 
 prices = []
 
-# 🔥 CANDLE STATE
-current_candle = int(time.time() // 60)
-
 def price_loop():
     price = 100
-    global current_candle
 
     while True:
         price += random.uniform(-1.2, 1.2)
@@ -23,9 +19,6 @@ def price_loop():
 
         if len(prices) > 2000:
             prices.pop(0)
-
-        # candle update
-        current_candle = int(time.time() // 60)
 
         time.sleep(1)
 
@@ -37,19 +30,33 @@ def home():
 
 @app.route("/api/signal")
 def signal():
-    return jsonify(ai_engine(prices, current_candle))
+    try:
+        return jsonify(ai_engine(prices))
+    except:
+        return jsonify({
+            "signal": "WAIT",
+            "confidence": 50,
+            "probability": 0,
+            "trend": "SIDE",
+            "market": "SAFE_MODE",
+            "risk": "LOW",
+            "strength": "NONE",
+            "price": prices[-1] if prices else 0,
+            "rsi": 50,
+            "ema20": 0,
+            "ema50": 0,
+            "macd": 0,
+            "timestamp": int(time.time())
+        })
 
 
-@app.route("/api/history")
-def history():
-    return jsonify(prices[-100:])
-
-
-@app.route("/api/status")
-def status():
-    return jsonify({
-        "candle_start": current_candle
-    })
+@app.route("/api/debug")
+def debug():
+    return {
+        "price_count": len(prices),
+        "last_price": prices[-1] if prices else 0,
+        "status": "running"
+    }
 
 
 threading.Thread(target=price_loop, daemon=True).start()

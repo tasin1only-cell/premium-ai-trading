@@ -4,6 +4,11 @@ import time
 last_signal_minute = -1
 
 # ======================
+# MEMORY (LEVEL 9)
+# ======================
+signal_memory = []
+
+# ======================
 # EMA
 # ======================
 def ema(data, period):
@@ -47,16 +52,26 @@ def macd(data):
     if len(data) < 30:
         return 0
 
-    ema12 = ema(data, 12)
-    ema26 = ema(data, 26)
-
-    return ema12 - ema26
+    return ema(data, 12) - ema(data, 26)
 
 # ======================
-# ENGINE
+# QUALITY SCORE
+# ======================
+def quality(score):
+    if abs(score) > 70:
+        return "A+"
+    elif abs(score) > 50:
+        return "A"
+    elif abs(score) > 30:
+        return "B"
+    else:
+        return "C"
+
+# ======================
+# AI ENGINE (LEVEL 9)
 # ======================
 def ai_engine(prices):
-    global last_signal_minute
+    global last_signal_minute, signal_memory
 
     if len(prices) < 30:
         return {
@@ -67,6 +82,7 @@ def ai_engine(prices):
             "market": "WARMUP",
             "risk": "LOW",
             "strength": "NONE",
+            "quality": "C",
             "price": prices[-1] if prices else 0,
             "rsi": 50,
             "ema20": 0,
@@ -77,30 +93,15 @@ def ai_engine(prices):
     now = time.time()
     minute = int(now // 60)
 
-    # candle lock
-    if minute == last_signal_minute:
-        return {
-            "signal": "WAIT",
-            "confidence": 50,
-            "probability": 0,
-            "trend": "SIDE",
-            "market": "HOLD",
-            "risk": "LOW",
-            "strength": "NONE",
-            "price": prices[-1],
-            "rsi": rsi(prices),
-            "ema20": ema(prices, 20),
-            "ema50": ema(prices, 50),
-            "macd": macd(prices)
-        }
-
     ema20 = ema(prices, 20)
     ema50 = ema(prices, 50)
     r = rsi(prices)
     m = macd(prices)
-
     momentum = prices[-1] - prices[-10]
 
+    # ======================
+    # SCORE SYSTEM
+    # ======================
     score = 0
 
     if ema20 > ema50:
@@ -125,31 +126,57 @@ def ai_engine(prices):
 
     probability = min(99, max(1, 50 + score))
 
-    if score >= 60:
-        signal = "BUY"
-        trend = "UP"
-        last_signal_minute = minute
-
-    elif score <= -60:
-        signal = "SELL"
-        trend = "DOWN"
-        last_signal_minute = minute
-
-    else:
+    # ======================
+    # SIGNAL DECISION
+    # ======================
+    if minute == last_signal_minute:
         signal = "WAIT"
-        trend = "SIDE"
+    else:
+        if score >= 60:
+            signal = "BUY"
+            last_signal_minute = minute
+        elif score <= -60:
+            signal = "SELL"
+            last_signal_minute = minute
+        else:
+            signal = "WAIT"
+
+    trend = "UP" if score > 0 else "DOWN" if score < 0 else "SIDE"
+
+    conf = min(95, 55 + abs(score))
+    qual = quality(score)
+
+    # ======================
+    # STORE SIGNAL (LEVEL 9 MEMORY)
+    # ======================
+    signal_memory.append({
+        "signal": signal,
+        "price": prices[-1],
+        "minute": minute,
+        "score": score
+    })
+
+    if len(signal_memory) > 200:
+        signal_memory.pop(0)
 
     return {
         "signal": signal,
-        "confidence": min(95, 55 + abs(score)),
-        "probability": probability,
+        "confidence": round(conf, 2),
+        "probability": round(probability, 2),
         "trend": trend,
         "market": "ACTIVE",
         "risk": "MEDIUM",
         "strength": "STRONG" if abs(score) > 60 else "MEDIUM",
+        "quality": qual,
         "price": round(prices[-1], 2),
         "rsi": round(r, 2),
         "ema20": round(ema20, 2),
         "ema50": round(ema50, 2),
         "macd": round(m, 4)
     }
+
+# ======================
+# LEVEL 9 EXTRA (optional API hook use)
+# ======================
+def get_signal_memory():
+    return signal_memory[-50:]

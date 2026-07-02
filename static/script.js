@@ -18,7 +18,8 @@ setInterval(() => {
 
     }
 
-},1000);
+}, 1000);
+
 
 
 /* ================= CANDLE TIMER ================= */
@@ -31,32 +32,32 @@ setInterval(() => {
 
     const sec = new Date().getSeconds();
 
-    const remaining = 59 - sec;
+    const remaining = 60 - sec;
 
     el.innerText =
-        `Candle Ends : 00:${String(remaining).padStart(2,"0")}`;
+        `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
 
-},1000);
+}, 1000);
 
 
 
 /* ================= CHART ================= */
 
-function loadChart(symbol="BINANCE:BTCUSDT"){
+function loadChart(symbol = "BINANCE:BTCUSDT") {
 
     const el = document.getElementById("tradingview_chart");
 
-    if(!el) return;
+    if (!el) return;
 
-    el.innerHTML="";
+    el.innerHTML = "";
 
-    if(typeof TradingView==="undefined"){
+    if (typeof TradingView === "undefined") {
 
-        setTimeout(()=>{
+        setTimeout(() => {
 
             loadChart(symbol);
 
-        },1000);
+        }, 1000);
 
         return;
 
@@ -64,27 +65,27 @@ function loadChart(symbol="BINANCE:BTCUSDT"){
 
     new TradingView.widget({
 
-        container_id:"tradingview_chart",
+        container_id: "tradingview_chart",
 
-        width:"100%",
+        width: "100%",
 
-        height:320,
+        height: 320,
 
-        symbol:symbol,
+        symbol: symbol,
 
-        interval:"1",
+        interval: "1",
 
-        theme:"dark",
+        theme: "dark",
 
-        style:"1",
+        style: "1",
 
-        locale:"en",
+        locale: "en",
 
-        autosize:true,
+        autosize: true,
 
-        hide_side_toolbar:true,
+        hide_side_toolbar: true,
 
-        allow_symbol_change:false
+        allow_symbol_change: false
 
     });
 
@@ -94,24 +95,25 @@ function loadChart(symbol="BINANCE:BTCUSDT"){
 
 /* ================= ASSET ================= */
 
-function changeAsset(){
+function changeAsset() {
 
     const asset =
+
         document.getElementById("asset").value;
 
     const map = {
 
-        "EUR/USD":"FX:EURUSD",
+        "EUR/USD": "FX:EURUSD",
 
-        "GBP/USD":"FX:GBPUSD",
+        "GBP/USD": "FX:GBPUSD",
 
-        "USD/JPY":"FX:USDJPY",
+        "USD/JPY": "FX:USDJPY",
 
-        "BTC/USD":"BINANCE:BTCUSDT",
+        "BTC/USD": "BINANCE:BTCUSDT",
 
-        "ETH/USD":"BINANCE:ETHUSDT",
+        "ETH/USD": "BINANCE:ETHUSDT",
 
-        "XAU/USD":"OANDA:XAUUSD"
+        "XAU/USD": "OANDA:XAUUSD"
 
     };
 
@@ -127,13 +129,13 @@ function changeAsset(){
 
 /* ================= UI ================= */
 
-function set(id,val){
+function set(id, val) {
 
-    const el=document.getElementById(id);
+    const el = document.getElementById(id);
 
-    if(el){
+    if (el) {
 
-        el.innerText=val;
+        el.innerText = val;
 
     }
 
@@ -141,78 +143,151 @@ function set(id,val){
 
 
 
-function updateUI(d){
+function updateUI(d) {
 
-    set("signalBox",
+    set(
 
-        "SIGNAL : "+d.signal);
+        "signalBox",
 
-    set("trendBox",
+        "SIGNAL : " + d.signal
 
-        "TREND : "+d.trend);
+    );
 
-    set("conf",
+    set(
 
-        "Confidence : "+d.confidence+"%");
+        "trendBox",
 
-    set("marketBox",
+        "TREND : " + d.trend
 
-        "Market : "+d.market);
+    );
 
-    set("riskBox",
+    set(
 
-        "Risk : "+d.risk);
+        "conf",
 
-    set("probBox",
+        "Confidence : " +
 
-        "Probability : "+d.probability+"%");
+        d.confidence +
 
-    set("strengthBox",
+        "%"
 
-        "Strength : "+d.strength);
+    );
+
+    set(
+
+        "marketBox",
+
+        "Market : " +
+
+        d.market
+
+    );
+
+    set(
+
+        "riskBox",
+
+        "Risk : " +
+
+        d.risk
+
+    );
+
+    set(
+
+        "probBox",
+
+        "Probability : " +
+
+        d.probability +
+
+        "%"
+
+    );
+
+    set(
+
+        "strengthBox",
+
+        "Strength : " +
+
+        d.strength
+
+    );
+
 
 
     const fill =
 
-        document.getElementById("rsiFill");
+        document.getElementById(
 
-    if(fill){
+            "rsiFill"
 
-        fill.style.width=d.rsi+"%";
+        );
+
+    if (fill) {
+
+        fill.style.width =
+
+            d.rsi + "%";
 
     }
 
 
-    const log=
 
-        document.getElementById("historyLog");
+    const log =
+
+        document.getElementById(
+
+            "historyLog"
+
+        );
 
 
-    if(log){
+
+    if (log) {
 
         const current =
 
             `${d.signal}_${d.price}`;
 
-        if(current!==lastSignal){
 
-            lastSignal=current;
 
-            const div=
+        if (
 
-                document.createElement("div");
+            current !== lastSignal
 
-            div.innerText=
+        ) {
+
+            lastSignal = current;
+
+            const div =
+
+                document.createElement(
+
+                    "div"
+
+                );
+
+
+
+            div.innerText =
 
                 `${d.signal} | RSI ${d.rsi} | Price ${d.price}`;
 
+
+
             log.prepend(div);
 
-            while(
 
-                log.childNodes.length>15
 
-            ){
+            while (
+
+                log.childNodes.length >
+
+                15
+
+            ) {
 
                 log.removeChild(
 
@@ -232,33 +307,43 @@ function updateUI(d){
 
 /* ================= API ================= */
 
-async function getSignal(){
+async function getSignal() {
 
-    if(running) return;
+    if (running) return;
 
-    running=true;
+    running = true;
 
-    try{
+    try {
 
-        const res=
+        const res =
 
             await fetch(
 
-                API_URL+
+                API_URL +
 
-                "?t="+Date.now()
+                "?t=" +
+
+                Date.now()
 
             );
 
-        const data=
+
+
+        const data =
 
             await res.json();
 
-        updateUI(data);
 
-    }
 
-    catch(e){
+        updateUI(
+
+            data
+
+        );
+
+
+
+    } catch (e) {
 
         console.log(
 
@@ -270,15 +355,17 @@ async function getSignal(){
 
     }
 
+
+
     setTimeout(
 
-        ()=>{
+        () => {
 
-            running=false;
+            running = false;
 
         },
 
-        1200
+        1000
 
     );
 
@@ -288,7 +375,7 @@ async function getSignal(){
 
 /* ================= BOT ================= */
 
-function startBot(){
+function startBot() {
 
     getSignal();
 
@@ -296,7 +383,7 @@ function startBot(){
 
         getSignal,
 
-        4000
+        5000
 
     );
 
@@ -306,17 +393,15 @@ function startBot(){
 
 /* ================= INIT ================= */
 
-window.onload=()=>{
+window.onload = () => {
 
-    setTimeout(()=>{
+    loadChart(
 
-        loadChart(
+        "BINANCE:BTCUSDT"
 
-            "BINANCE:BTCUSDT"
+    );
 
-        );
 
-    },1500);
 
     startBot();
 

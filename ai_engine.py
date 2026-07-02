@@ -54,7 +54,7 @@ def macd(data):
 
 
 # ==========================
-# LEVEL 7 STABLE + ANTI STUCK ENGINE
+# FINAL STABLE AI ENGINE (FIXED CANDLE LOGIC)
 # ==========================
 def ai_engine(prices, candle_start):
 
@@ -63,7 +63,6 @@ def ai_engine(prices, candle_start):
 
     # ---------- NO DATA ----------
     if not prices or len(prices) < 30:
-
         return {
             "signal": "WAIT",
             "confidence": 50,
@@ -79,7 +78,6 @@ def ai_engine(prices, candle_start):
 
     # ---------- WARMUP ----------
     if len(prices) < 50:
-
         return {
             "signal": "WAIT",
             "confidence": 50,
@@ -104,12 +102,12 @@ def ai_engine(prices, candle_start):
     score = 0
 
     # ==========================
-    # TREND (EMA)
+    # TREND
     # ==========================
     score += 35 if ema20 > ema50 else -35
 
     # ==========================
-    # RSI FILTER (SMOOTH)
+    # RSI FILTER
     # ==========================
     if r > 62:
         score += 20
@@ -122,7 +120,7 @@ def ai_engine(prices, candle_start):
     score += 22 if m > 0 else -22
 
     # ==========================
-    # MOMENTUM (NOISE REDUCED)
+    # MOMENTUM
     # ==========================
     if momentum > 1.0:
         score += 12
@@ -130,29 +128,39 @@ def ai_engine(prices, candle_start):
         score -= 12
 
     # ==========================
-    # PROBABILITY (SMOOTHED)
-    # ==========================
-    probability = max(5, min(95, 50 + score))
-
-    # ==========================
     # SIGNAL GENERATION
     # ==========================
     if score >= 48:
         signal = "BUY"
         trend = "UP"
-
     elif score <= -48:
         signal = "SELL"
         trend = "DOWN"
-
     else:
         signal = "WAIT"
         trend = "SIDE"
 
     # ==========================
-    # ANTI STUCK SIGNAL FIX
+    # 🔥 ANTI STUCK + CANDLE FIX
     # ==========================
-    # prevent same signal spam
+    is_new_candle = (candle_start != last_candle)
+
+    if not is_new_candle:
+        # same candle → no spam signal change
+        return {
+            "signal": "WAIT",
+            "confidence": 50,
+            "trend": "SIDE",
+            "market": "HOLDING",
+            "risk": "LOW",
+            "strength": "NONE",
+            "price": round(prices[-1], 2),
+            "rsi": round(r, 2),
+            "probability": 0,
+            "timestamp": int(time.time())
+        }
+
+    # avoid repeated same signal spam
     if signal == last_signal and abs(score) < 55:
         signal = "WAIT"
         trend = "SIDE"
@@ -161,12 +169,12 @@ def ai_engine(prices, candle_start):
     last_candle = candle_start
 
     # ==========================
-    # CONFIDENCE
+    # CONFIDENCE + PROBABILITY
     # ==========================
+    probability = max(5, min(95, 50 + score))
     confidence = min(90, 55 + abs(score) * 0.7)
 
     return {
-
         "signal": signal,
         "confidence": round(confidence, 2),
         "probability": round(probability, 2),

@@ -54,228 +54,131 @@ def macd(data):
     return ema(data, 12) - ema(data, 26)
 
 
+# ==========================
+# LEVEL 7 STABLE AI ENGINE
+# ==========================
 def ai_engine(prices, candle_start):
 
     global last_candle
 
-    # ---------------- NO DATA ----------------
-
-    if not prices:
+    # ---------- NO DATA ----------
+    if not prices or len(prices) < 30:
 
         return {
 
             "signal": "WAIT",
-
             "confidence": 50,
-
             "trend": "SIDE",
-
             "market": "NO_DATA",
-
             "risk": "LOW",
-
             "strength": "NONE",
-
-            "price": 0,
-
+            "price": prices[-1] if prices else 0,
             "rsi": 50,
-
             "probability": 0,
-
             "timestamp": int(time.time())
 
         }
 
-    # ---------------- WARMUP ----------------
-
-    if len(prices) < 20:
+    # ---------- WARMUP ----------
+    if len(prices) < 50:
 
         return {
 
             "signal": "WAIT",
-
             "confidence": 50,
-
             "trend": "SIDE",
-
             "market": "WARMUP",
-
             "risk": "LOW",
-
             "strength": "NONE",
-
             "price": round(prices[-1], 2),
-
             "rsi": 50,
-
             "probability": 0,
-
             "timestamp": int(time.time())
 
         }
 
     ema20 = ema(prices, 20)
-
     ema50 = ema(prices, 50)
 
     r = rsi(prices)
-
     m = macd(prices)
 
-    momentum = prices[-1] - prices[-10]
+    # safer momentum (FIXED)
+    momentum = prices[-1] - prices[-15] if len(prices) > 15 else 0
 
     score = 0
 
-    # EMA
-
+    # ==========================
+    # TREND (EMA)
+    # ==========================
     if ema20 > ema50:
-
-        score += 40
-
+        score += 35
     else:
+        score -= 35
 
-        score -= 40
-
-    # RSI (Trend Following)
-
-    if r > 55:
-
-        score += 25
-
-    elif r < 45:
-
-        score -= 25
-
-    # MACD
-
-    if m > 0:
-
+    # ==========================
+    # RSI (balanced zone)
+    # ==========================
+    if r > 60:
         score += 20
-
-    else:
-
+    elif r < 40:
         score -= 20
 
-    # Momentum
+    # ==========================
+    # MACD
+    # ==========================
+    if m > 0:
+        score += 25
+    else:
+        score -= 25
 
-    if momentum > 0.3:
-
+    # ==========================
+    # MOMENTUM (smoothed)
+    # ==========================
+    if momentum > 1.5:
         score += 15
-
-    elif momentum < -0.3:
-
+    elif momentum < -1.5:
         score -= 15
 
-    probability = max(
+    # ==========================
+    # PROBABILITY
+    # ==========================
+    probability = max(1, min(99, 50 + score))
 
-        1,
-
-        min(
-
-            99,
-
-            50 + score
-
-        )
-
-    )
-
-    if score >= 45:
-
+    # ==========================
+    # SIGNAL THRESHOLD (IMPORTANT FIX)
+    # ==========================
+    if score >= 50:
         signal = "BUY"
-
         trend = "UP"
 
-    elif score <= -45:
-
+    elif score <= -50:
         signal = "SELL"
-
         trend = "DOWN"
 
     else:
-
         signal = "WAIT"
-
         trend = "SIDE"
 
-    confidence = min(
-
-        95,
-
-        60 + abs(score)
-
-    )
+    confidence = min(95, 60 + abs(score))
 
     last_candle = candle_start
 
     return {
 
         "signal": signal,
-
         "confidence": confidence,
-
         "probability": probability,
-
         "trend": trend,
-
         "market": "LIVE",
-
         "risk": "MEDIUM",
+        "strength": "STRONG" if abs(score) >= 60 else "MEDIUM",
 
-        "strength":
+        "price": round(prices[-1], 2),
+        "rsi": round(r, 2),
+        "ema20": round(ema20, 2),
+        "ema50": round(ema50, 2),
+        "macd": round(m, 4),
 
-            "STRONG"
-
-            if abs(score) >= 60
-
-            else "MEDIUM",
-
-        "price": round(
-
-            prices[-1],
-
-            2
-
-        ),
-
-        "rsi": round(
-
-            r,
-
-            2
-
-        ),
-
-        "ema20": round(
-
-            ema20,
-
-            2
-
-        ),
-
-        "ema50": round(
-
-            ema50,
-
-            2
-
-        ),
-
-        "macd": round(
-
-            m,
-
-            4
-
-        ),
-
-        "timestamp":
-
-            int(
-
-                time.time()
-
-            )
-
+        "timestamp": int(time.time())
     }

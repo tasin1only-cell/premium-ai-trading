@@ -1,20 +1,18 @@
-console.log("AI TRADING PRO V4 FIXED LOADED");
+console.log("AI TRADING PRO FIXED SYSTEM");
 
 const API_URL = "/api/signal";
 
+let running = false;
 let lastSignalTime = 0;
 let lastSignal = "";
-let running = false;
 
-
-/* ================= CLOCK ================= */
+// CLOCK
 setInterval(() => {
     const el = document.getElementById("clock");
     if (el) el.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
-
-/* ================= CANDLE TIMER ================= */
+// CANDLE TIMER
 setInterval(() => {
     const el = document.getElementById("candle");
     if (!el) return;
@@ -25,15 +23,13 @@ setInterval(() => {
     el.innerText = `Candle Ends : 00:${String(remaining).padStart(2,"0")}`;
 }, 1000);
 
-
-/* ================= HELPERS ================= */
+// SET UI
 function set(id, val) {
     const el = document.getElementById(id);
     if (el) el.innerText = val;
 }
 
-
-/* ================= UI UPDATE ================= */
+// UI UPDATE
 function updateUI(d) {
 
     set("signalBox", "SIGNAL : " + d.signal);
@@ -47,14 +43,13 @@ function updateUI(d) {
     const rsiFill = document.getElementById("rsiFill");
     if (rsiFill) rsiFill.style.width = d.rsi + "%";
 
-    // ================= SIGNAL HISTORY (CANDLE BASED) =================
+    // HISTORY FIX (ONLY NEW CANDLE)
     const now = Date.now();
 
     if (now - lastSignalTime > 55000) {
         lastSignalTime = now;
 
         const log = document.getElementById("historyLog");
-
         if (log) {
             const div = document.createElement("div");
             div.innerText = `${d.signal} | RSI ${d.rsi} | Price ${d.price}`;
@@ -65,23 +60,17 @@ function updateUI(d) {
             }
         }
     }
-
-    lastSignal = d.signal;
 }
 
-
-/* ================= API CALL ================= */
+// API CALL
 async function getSignal() {
-
     if (running) return;
     running = true;
 
     try {
         const res = await fetch(API_URL + "?t=" + Date.now());
         const data = await res.json();
-
         updateUI(data);
-
     } catch (e) {
         console.log("API ERROR", e);
     }
@@ -89,15 +78,12 @@ async function getSignal() {
     setTimeout(() => running = false, 800);
 }
 
-
-/* ================= BOT LOOP (FAST UPDATE) ================= */
+// LOOP (FAST + STABLE)
 function startBot() {
     getSignal();
-    setInterval(getSignal, 2000);   // 🔥 FAST SIGNAL UPDATE
+    setInterval(getSignal, 2000);
 }
 
-
-/* ================= INIT ================= */
 window.onload = () => {
     startBot();
 };

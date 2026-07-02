@@ -9,14 +9,12 @@ app = Flask(__name__)
 CORS(app)
 
 prices = []
+candle_start = int(time.time())
 
-# ======================
-# PRICE FEED (STABLE BOOT FIX)
-# ======================
 def price_loop():
     price = 100
 
-    time.sleep(3)  # boot stabilization
+    global candle_start
 
     while True:
         price += random.uniform(-1.2, 1.2)
@@ -25,39 +23,33 @@ def price_loop():
         if len(prices) > 2000:
             prices.pop(0)
 
+        # new candle every 60 sec
+        if int(time.time()) - candle_start >= 60:
+            candle_start = int(time.time())
+
         time.sleep(1)
 
-threading.Thread(target=price_loop, daemon=True).start()
-
-# ======================
-# ROUTES
-# ======================
 @app.route("/")
 def home():
     return render_template("index.html")
 
 @app.route("/api/signal")
 def signal():
-    return jsonify(ai_engine(prices))
+    return jsonify(ai_engine(prices, candle_start))
+
+@app.route("/api/status")
+def status():
+    return {
+        "candle_start": candle_start,
+        "price_len": len(prices),
+        "running": True
+    }
 
 @app.route("/api/history")
 def history():
     return jsonify(prices[-100:])
 
-@app.route("/api/status")
-def status():
-    return {
-        "price_count": len(prices),
-        "last_price": prices[-1] if prices else 0,
-        "server_time": time.time()
-    }
-
-@app.route("/debug")
-def debug():
-    return {
-        "price_count": len(prices),
-        "last_prices": prices[-5:] if prices else []
-    }
+threading.Thread(target=price_loop, daemon=True).start()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

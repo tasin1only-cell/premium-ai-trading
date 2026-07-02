@@ -1,61 +1,47 @@
-console.log("LEVEL 9 STABLE AI TRADING JS");
+console.log("LEVEL 8 FIXED SYSTEM LOADED");
 
-// ======================
-// API
-// ======================
 const API_URL = "/api/signal";
 
-// ======================
-// STATE
-// ======================
 let running = false;
 let started = false;
 
-// ======================
-// CLOCK
-// ======================
+/* CLOCK */
 setInterval(() => {
     const el = document.getElementById("clock");
     if (el) el.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
-// ======================
-// CANDLE TIMER (SYNC FIX)
-// ======================
-function updateCandleTimer() {
-    const now = new Date();
-    const sec = now.getSeconds();
-    const remaining = 60 - sec;
-
-    const el = document.getElementById("candle");
-    if (el) {
-        el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
-
-        el.style.color =
-            remaining <= 5 ? "red" :
-            remaining <= 15 ? "orange" :
-            "#00ff99";
-    }
+/* CANDLE SYNC (REAL FIX - aligned with minute boundary) */
+function getCandleRemaining() {
+    const sec = new Date().getSeconds();
+    return 60 - sec;
 }
-setInterval(updateCandleTimer, 1000);
 
-// ======================
-// SAFE CHART LOADER (FIXED)
-// ======================
+setInterval(() => {
+    const el = document.getElementById("candle");
+    if (!el) return;
+
+    const remaining = getCandleRemaining();
+
+    el.innerText = `Candle Ends : 00:${String(remaining).padStart(2,"0")}`;
+
+    el.style.color =
+        remaining <= 5 ? "red" :
+        remaining <= 15 ? "orange" :
+        "#ffcc00";
+
+}, 1000);
+
+/* CHART SAFE */
 function loadChart(symbol = "FX:EURUSD") {
 
     setTimeout(() => {
-
         const el = document.getElementById("tradingview_chart");
         if (!el) return;
 
-        // IMPORTANT: prevent overwrite bug
         el.innerHTML = "";
 
-        if (typeof TradingView === "undefined") {
-            console.log("TradingView not loaded yet");
-            return;
-        }
+        if (!window.TradingView) return;
 
         new TradingView.widget({
             container_id: "tradingview_chart",
@@ -65,52 +51,44 @@ function loadChart(symbol = "FX:EURUSD") {
             interval: "1",
             theme: "dark",
             style: "1",
-            locale: "en",
-            hide_side_toolbar: true,
-            allow_symbol_change: false
+            locale: "en"
         });
 
-    }, 1200); // 🔥 important delay fix
+    }, 700);
 }
 
-// ======================
-// UI UPDATE
-// ======================
+/* UI UPDATE (LEVEL 8 FULL FIX) */
 function updateUI(data) {
-
-    const signalBox = document.getElementById("signalBox");
-    const trendBox = document.getElementById("trendBox");
-    const conf = document.getElementById("conf");
-    const rsiFill = document.getElementById("rsiFill");
-    const log = document.getElementById("historyLog");
 
     const rsi = data.rsi ?? 50;
     const price = data.price ?? 0;
 
-    if (signalBox) {
-        signalBox.innerText = "SIGNAL : " + (data.signal || "WAIT");
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val;
+    };
 
-        signalBox.style.color =
-            data.signal === "BUY" ? "#00ff66" :
-            data.signal === "SELL" ? "#ff4444" :
-            "gold";
-    }
+    set("signalBox", "SIGNAL : " + (data.signal || "WAIT"));
+    set("trendBox", "TREND : " + (data.trend || "SIDE"));
+    set("conf", "Confidence : " + (data.confidence || 50) + "%");
 
-    if (trendBox) {
-        trendBox.innerText = "TREND : " + (data.trend || "SIDE");
-    }
+    set("marketBox", "Market : " + (data.market || "UNKNOWN"));
+    set("riskBox", "Risk : " + (data.risk || "UNKNOWN"));
+    set("probBox", "Probability : " + (data.probability || 0) + "%");
+    set("strengthBox", "Strength : " + (data.strength || "NONE"));
 
-    if (conf) {
-        conf.innerText = "Confidence : " + (data.confidence || 50) + "%";
-    }
+    /* RSI BAR */
+    const fill = document.getElementById("rsiFill");
+    if (fill) fill.style.width = rsi + "%";
 
-    if (rsiFill) {
-        rsiFill.style.width = rsi + "%";
-    }
+    /* HISTORY */
+    const log = document.getElementById("historyLog");
 
     if (log) {
         const div = document.createElement("div");
-        div.innerText = `${data.signal} | RSI ${rsi} | Price ${price} | ${new Date().toLocaleTimeString()}`;
+
+        div.innerText =
+            `${data.signal} | RSI ${rsi} | Price ${price} | Prob ${data.probability ?? 0}%`;
 
         log.prepend(div);
 
@@ -120,10 +98,8 @@ function updateUI(data) {
     }
 }
 
-// ======================
-// SIGNAL ENGINE (CANDLE SYNC FIX)
-// ======================
-async function getSignal() {
+/* SIGNAL FETCH */
+async function generateSignal() {
 
     if (running) return;
     running = true;
@@ -136,45 +112,30 @@ async function getSignal() {
 
         updateUI(data);
 
-    } catch (err) {
-        console.log(err);
+    } catch (e) {
+        console.log(e);
     }
 
-    setTimeout(() => {
-        running = false;
-    }, 2000);
+    setTimeout(() => running = false, 1200);
 }
 
-// ======================
-// START BOT (CANDLE ALIGNED)
-// ======================
+/* CANDLE SYNC START */
 function startBot() {
 
     if (started) return;
     started = true;
 
-    // 🔥 align to candle start
-    const now = new Date();
-    const delay = (60 - now.getSeconds()) * 1000;
+    generateSignal();
 
-    console.log("Sync start in", delay / 1000, "sec");
-
-    setTimeout(() => {
-
-        getSignal();
-        setInterval(getSignal, 60000);
-
-    }, delay);
+    setInterval(() => {
+        generateSignal();
+    }, 60000);
 }
 
-// ======================
-// INIT (FIX ORDER)
-// ======================
+/* INIT */
 window.onload = () => {
 
-    console.log("LEVEL 9 READY");
-
-    loadChart("FX:EURUSD");
+    loadChart();
 
     startBot();
 };

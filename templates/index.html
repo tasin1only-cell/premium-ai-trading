@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
 
 <title>AI Trading Pro v4</title>
 
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet"
+href="/static/style.css">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script src="https://s3.tradingview.com/tv.js"></script>
 
 </head>
@@ -19,50 +25,112 @@
 
 <h2>AI Trading Pro v4</h2>
 
-<div id="clock">00:00:00</div>
+<div id="clock">
 
-<div class="box" id="trendBox">TREND: --</div>
-<div class="box" id="signalBox">SIGNAL: --</div>
-<div class="box" id="conf">Confidence: --</div>
+00:00:00
 
-<div class="box" id="marketBox">Market: --</div>
-<div class="box" id="riskBox">Risk: --</div>
-<div class="box" id="probBox">Probability: --</div>
-<div class="box" id="strengthBox">Strength: --</div>
+</div>
 
-<br>
+<div class="box" id="trendBox">
+
+TREND : --
+
+</div>
+
+<div class="box" id="signalBox">
+
+SIGNAL : --
+
+</div>
+
+<div class="box" id="conf">
+
+Confidence : --
+
+</div>
+
+<div class="box" id="marketBox">
+
+Market : --
+
+</div>
+
+<div class="box" id="riskBox">
+
+Risk : --
+
+</div>
+
+<div class="box" id="probBox">
+
+Probability : --
+
+</div>
+
+<div class="box" id="strengthBox">
+
+Strength : --
+
+</div>
 
 <div class="rsi-bar">
-    <div id="rsiFill"></div>
-</div>
 
-<br>
+<div id="rsiFill"></div>
+
+</div>
 
 <select id="asset" onchange="changeAsset()">
+
 <option>EUR/USD</option>
+
 <option>GBP/USD</option>
+
 <option>USD/JPY</option>
-<option>BTC/USD</option>
+
+<option selected>BTC/USD</option>
+
 <option>ETH/USD</option>
+
 <option>XAU/USD</option>
+
 </select>
 
-<br>
-
 <div class="chart-card">
-    <div id="tradingview_chart"></div>
+
+<div id="tradingview_chart"
+style="width:100%;height:320px;">
+
 </div>
 
-<div class="box" id="candle">Candle Ends: 00:59</div>
+</div>
+
+<div class="box" id="candle">
+
+Candle Ends : 00:59
+
+</div>
 
 <div class="history">
-<h4>Signal History</h4>
-<div id="historyLog"></div>
+
+<h4>
+
+Signal History
+
+</h4>
+
+<div id="historyLog">
+
+</div>
+
 </div>
 
 </div>
 
-<script src="/static/script.js" defer></script>
+<script defer
+src="/static/script.js">
+
+</script>
 
 </body>
+
 </html>

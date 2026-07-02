@@ -21,10 +21,8 @@
 
 <div id="clock">00:00:00</div>
 
-<div class="trend-box box" id="trendBox">TREND: --</div>
-
+<div class="box" id="trendBox">TREND: --</div>
 <div class="box" id="signalBox">SIGNAL: --</div>
-
 <div class="box" id="conf">Confidence: --</div>
 
 <div class="box" id="marketBox">Market: --</div>
@@ -40,7 +38,7 @@
 
 <br>
 
-<select id="asset">
+<select id="asset" onchange="changeAsset()">
 <option>EUR/USD</option>
 <option>GBP/USD</option>
 <option>USD/JPY</option>

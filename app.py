@@ -14,56 +14,48 @@ current_price = 100000.0
 
 
 # ==========================
-# CLEAN PRICE FEED (STABLE + DYNAMIC)
+# STABLE MARKET FEED
 # ==========================
-def get_binance_price():
+def get_price():
     global current_price
-
-    move = random.uniform(-2.0, 2.0)
+    move = random.uniform(-3.0, 3.0)
     current_price += move
-
     return round(current_price, 2)
 
 
 # ==========================
-# PRICE LOOP (ANTI FREEZE + PROPER SEED)
+# LOOP (REALISTIC CANDLE FLOW)
 # ==========================
 def price_loop():
     global candle_start
 
     while True:
-        price = get_binance_price()
+        price = get_price()
 
-        # seed market data once
+        # seed market once
         if len(prices) < 60:
             if not prices:
                 temp = price
                 seed = []
-
                 for _ in range(60):
-                    temp += random.uniform(-1.2, 1.2)
+                    temp += random.uniform(-2, 2)
                     seed.append(round(temp, 2))
-
                 prices.extend(seed)
             else:
                 prices.append(price)
         else:
             prices.append(price)
 
-        # limit memory
         if len(prices) > 2000:
             prices.pop(0)
 
-        # candle sync (1 minute)
+        # candle reset every 60 sec
         if int(time.time()) - candle_start >= 60:
             candle_start = int(time.time())
 
         time.sleep(1)
 
 
-# ==========================
-# ROUTES
-# ==========================
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -89,11 +81,7 @@ def history():
     return jsonify(prices[-100:])
 
 
-# ==========================
-# START THREAD
-# ==========================
 threading.Thread(target=price_loop, daemon=True).start()
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)

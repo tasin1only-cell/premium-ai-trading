@@ -1,4 +1,4 @@
-console.log("LEVEL 8 FIXED JS LOADED");
+console.log("LEVEL 8 FINAL JS LOADED");
 
 const API_URL = "/api/signal";
 
@@ -14,7 +14,7 @@ setInterval(() => {
 }, 1000);
 
 // ======================
-// CANDLE TIMER (SYNC)
+// CANDLE TIMER (SYNC VISUAL ONLY)
 // ======================
 setInterval(() => {
     const sec = new Date().getSeconds();
@@ -24,42 +24,46 @@ setInterval(() => {
 
     if (el) {
         el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
+        el.style.color =
+            remaining <= 5 ? "red" :
+            remaining <= 15 ? "orange" : "#ffcc00";
     }
 }, 1000);
 
 // ======================
-// SAFE CHART
+// SAFE CHART FIX (IMPORTANT)
 // ======================
 function loadChart(symbol = "FX:EURUSD") {
 
     setTimeout(() => {
-        try {
-            const el = document.getElementById("tradingview_chart");
-            if (!el) return;
+        const el = document.getElementById("tradingview_chart");
 
-            el.innerHTML = "";
+        if (!el) return;
 
-            if (!window.TradingView) return;
+        el.innerHTML = "";
 
-            new TradingView.widget({
-                container_id: "tradingview_chart",
-                width: "100%",
-                height: 320,
-                symbol: symbol,
-                interval: "1",
-                theme: "dark",
-                style: "1",
-                locale: "en"
-            });
-
-        } catch (e) {
-            console.log("Chart error", e);
+        if (typeof TradingView === "undefined") {
+            console.log("TradingView not loaded");
+            return;
         }
-    }, 800);
+
+        new TradingView.widget({
+            container_id: "tradingview_chart",
+            width: "100%",
+            height: 320,
+            symbol: symbol,
+            interval: "1",
+            theme: "dark",
+            style: "1",
+            locale: "en",
+            hide_side_toolbar: true
+        });
+
+    }, 900);
 }
 
 // ======================
-// UI
+// UI UPDATE
 // ======================
 function updateUI(data) {
 
@@ -83,22 +87,29 @@ function updateUI(data) {
     if (log) {
         const div = document.createElement("div");
         div.innerText =
-            `${data.signal} | RSI ${rsi} | ${price}`;
+            `${data.signal} | RSI ${rsi} | Price ${price} | ${new Date().toLocaleTimeString()}`;
         log.prepend(div);
+
+        while (log.childNodes.length > 15) {
+            log.removeChild(log.lastChild);
+        }
     }
 }
 
 // ======================
-// SIGNAL
+// SIGNAL ENGINE
 // ======================
 async function getSignal() {
+
     if (running) return;
     running = true;
 
     try {
         const res = await fetch(API_URL);
         const data = await res.json();
+
         updateUI(data);
+
     } catch (e) {
         console.log(e);
     }
@@ -110,6 +121,7 @@ async function getSignal() {
 // START
 // ======================
 function startBot() {
+
     if (started) return;
     started = true;
 
@@ -121,6 +133,7 @@ function startBot() {
 // INIT
 // ======================
 window.onload = () => {
-    loadChart();
+
+    loadChart("FX:EURUSD");
     startBot();
 };

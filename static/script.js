@@ -1,10 +1,9 @@
 console.log("STABLE RESET PACK LOADED");
 
-const API_URL = "/api/signal";
-const STATUS_URL = "/api/status";
+const API = "/api/signal";
+const STATUS = "/api/status";
 
 let lastCandle = 0;
-let running = false;
 
 /* CLOCK */
 setInterval(() => {
@@ -12,63 +11,55 @@ setInterval(() => {
     if (el) el.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
+
 /* CANDLE SYNC (REAL FIX) */
-async function syncCandle() {
+setInterval(async () => {
     try {
-        const res = await fetch(STATUS_URL);
+        const res = await fetch(STATUS);
         const data = await res.json();
 
         if (data.candle_start !== lastCandle) {
             lastCandle = data.candle_start;
-            getSignal(); // only new candle
+            fetchSignal();
         }
 
     } catch (e) {}
-}
+}, 3000);
 
-setInterval(syncCandle, 3000);
 
 /* SIGNAL */
-async function getSignal() {
-
-    if (running) return;
-    running = true;
-
+async function fetchSignal() {
     try {
-        const res = await fetch(API_URL);
+        const res = await fetch(API);
         const data = await res.json();
 
-        if (!data || !data.price) {
-            running = false;
-            return;
-        }
+        if (!data) return;
 
         updateUI(data);
 
     } catch (e) {
         console.log(e);
     }
-
-    setTimeout(() => running = false, 1000);
 }
 
-/* UI SAFE */
-function updateUI(data) {
 
-    const set = (id, val) => {
+/* UI */
+function updateUI(d) {
+
+    const set = (id, v) => {
         const el = document.getElementById(id);
-        if (el) el.innerText = val;
+        if (el) el.innerText = v;
     };
 
-    set("signalBox", "SIGNAL : " + data.signal);
-    set("trendBox", "TREND : " + data.trend);
-    set("conf", "Confidence : " + data.confidence + "%");
-    set("marketBox", "Market : " + data.market);
-    set("riskBox", "Risk : " + data.risk);
-    set("probBox", "Probability : " + data.probability + "%");
-    set("strengthBox", "Strength : " + data.strength);
+    set("signalBox", "SIGNAL : " + d.signal);
+    set("trendBox", "TREND : " + d.trend);
+    set("conf", "Confidence : " + d.confidence + "%");
+    set("marketBox", "Market : " + d.market);
+    set("riskBox", "Risk : " + d.risk);
+    set("probBox", "Probability : " + d.probability + "%");
+    set("strengthBox", "Strength : " + d.strength);
 
-    const rsi = data.rsi ?? 50;
+    const rsi = d.rsi ?? 50;
     const fill = document.getElementById("rsiFill");
     if (fill) fill.style.width = rsi + "%";
 
@@ -76,9 +67,8 @@ function updateUI(data) {
 
     if (log) {
         const div = document.createElement("div");
-
         div.innerText =
-            `${data.signal} | RSI ${rsi} | Price ${data.price} | ${new Date().toLocaleTimeString()}`;
+            `${d.signal} | RSI ${rsi} | Price ${d.price}`;
 
         log.prepend(div);
 
@@ -88,8 +78,9 @@ function updateUI(data) {
     }
 }
 
+
 /* INIT */
 window.onload = () => {
-    getSignal();
-    setInterval(getSignal, 15000); // safe refresh
+    fetchSignal();
+    setInterval(fetchSignal, 60000);
 };

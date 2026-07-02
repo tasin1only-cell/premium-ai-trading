@@ -4,6 +4,7 @@ const API_URL = "/api/signal";
 
 let running = false;
 let lastSignal = "";
+let lastSignalTime = 0;
 
 
 /* ================= CLOCK ================= */
@@ -13,13 +14,10 @@ setInterval(() => {
     const el = document.getElementById("clock");
 
     if (el) {
-
         el.innerText = new Date().toLocaleTimeString();
-
     }
 
 }, 1000);
-
 
 
 /* ================= CANDLE TIMER ================= */
@@ -31,14 +29,11 @@ setInterval(() => {
     if (!el) return;
 
     const sec = new Date().getSeconds();
-
     const remaining = 60 - sec;
 
-    el.innerText =
-        `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
+    el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
 
 }, 1000);
-
 
 
 /* ================= CHART ================= */
@@ -53,256 +48,98 @@ function loadChart(symbol = "BINANCE:BTCUSDT") {
 
     if (typeof TradingView === "undefined") {
 
-        setTimeout(() => {
-
-            loadChart(symbol);
-
-        }, 1000);
-
+        setTimeout(() => loadChart(symbol), 1000);
         return;
-
     }
 
     new TradingView.widget({
 
         container_id: "tradingview_chart",
-
         width: "100%",
-
         height: 320,
-
         symbol: symbol,
-
         interval: "1",
-
         theme: "dark",
-
         style: "1",
-
         locale: "en",
-
         autosize: true,
-
         hide_side_toolbar: true,
-
         allow_symbol_change: false
-
     });
-
 }
-
 
 
 /* ================= ASSET ================= */
 
 function changeAsset() {
 
-    const asset =
-
-        document.getElementById("asset").value;
+    const asset = document.getElementById("asset").value;
 
     const map = {
 
         "EUR/USD": "FX:EURUSD",
-
         "GBP/USD": "FX:GBPUSD",
-
         "USD/JPY": "FX:USDJPY",
-
         "BTC/USD": "BINANCE:BTCUSDT",
-
         "ETH/USD": "BINANCE:ETHUSDT",
-
         "XAU/USD": "OANDA:XAUUSD"
-
     };
 
-    loadChart(
-
-        map[asset]
-
-    );
-
+    loadChart(map[asset]);
 }
-
 
 
 /* ================= UI ================= */
 
 function set(id, val) {
-
     const el = document.getElementById(id);
-
-    if (el) {
-
-        el.innerText = val;
-
-    }
-
+    if (el) el.innerText = val;
 }
 
 
+/* ================= MAIN UI UPDATE (FIXED) ================= */
 
 function updateUI(d) {
 
-    set(
+    const now = Date.now();
 
-        "signalBox",
+    set("signalBox", "SIGNAL : " + d.signal);
+    set("trendBox", "TREND : " + d.trend);
+    set("conf", "Confidence : " + d.confidence + "%");
+    set("marketBox", "Market : " + d.market);
+    set("riskBox", "Risk : " + d.risk);
+    set("probBox", "Probability : " + d.probability + "%");
+    set("strengthBox", "Strength : " + d.strength);
 
-        "SIGNAL : " + d.signal
-
-    );
-
-    set(
-
-        "trendBox",
-
-        "TREND : " + d.trend
-
-    );
-
-    set(
-
-        "conf",
-
-        "Confidence : " +
-
-        d.confidence +
-
-        "%"
-
-    );
-
-    set(
-
-        "marketBox",
-
-        "Market : " +
-
-        d.market
-
-    );
-
-    set(
-
-        "riskBox",
-
-        "Risk : " +
-
-        d.risk
-
-    );
-
-    set(
-
-        "probBox",
-
-        "Probability : " +
-
-        d.probability +
-
-        "%"
-
-    );
-
-    set(
-
-        "strengthBox",
-
-        "Strength : " +
-
-        d.strength
-
-    );
+    const fill = document.getElementById("rsiFill");
+    if (fill) fill.style.width = d.rsi + "%";
 
 
-
-    const fill =
-
-        document.getElementById(
-
-            "rsiFill"
-
-        );
-
-    if (fill) {
-
-        fill.style.width =
-
-            d.rsi + "%";
-
-    }
-
-
-
-    const log =
-
-        document.getElementById(
-
-            "historyLog"
-
-        );
-
-
+    const log = document.getElementById("historyLog");
 
     if (log) {
 
-        const current =
+        const currentSignal = `${d.signal}_${d.price}`;
 
-            `${d.signal}_${d.price}`;
+        const isNewSignal = currentSignal !== lastSignal;
 
+        // 🔥 TIME + SIGNAL FILTER (IMPORTANT FIX)
+        if (isNewSignal && (now - lastSignalTime > 55000)) {
 
+            lastSignal = currentSignal;
+            lastSignalTime = now;
 
-        if (
-
-            current !== lastSignal
-
-        ) {
-
-            lastSignal = current;
-
-            const div =
-
-                document.createElement(
-
-                    "div"
-
-                );
-
-
-
-            div.innerText =
-
-                `${d.signal} | RSI ${d.rsi} | Price ${d.price}`;
-
-
+            const div = document.createElement("div");
+            div.innerText = `${d.signal} | RSI ${d.rsi} | Price ${d.price}`;
 
             log.prepend(div);
 
-
-
-            while (
-
-                log.childNodes.length >
-
-                15
-
-            ) {
-
-                log.removeChild(
-
-                    log.lastChild
-
-                );
-
+            while (log.childNodes.length > 15) {
+                log.removeChild(log.lastChild);
             }
-
         }
-
     }
-
 }
-
 
 
 /* ================= API ================= */
@@ -310,99 +147,33 @@ function updateUI(d) {
 async function getSignal() {
 
     if (running) return;
-
     running = true;
 
     try {
-
-        const res =
-
-            await fetch(
-
-                API_URL +
-
-                "?t=" +
-
-                Date.now()
-
-            );
-
-
-
-        const data =
-
-            await res.json();
-
-
-
-        updateUI(
-
-            data
-
-        );
-
-
+        const res = await fetch(API_URL + "?t=" + Date.now());
+        const data = await res.json();
+        updateUI(data);
 
     } catch (e) {
-
-        console.log(
-
-            "API ERROR",
-
-            e
-
-        );
-
+        console.log("API ERROR", e);
     }
 
-
-
-    setTimeout(
-
-        () => {
-
-            running = false;
-
-        },
-
-        1000
-
-    );
-
+    setTimeout(() => running = false, 1000);
 }
-
 
 
 /* ================= BOT ================= */
 
 function startBot() {
-
     getSignal();
-
-    setInterval(
-
-        getSignal,
-
-        5000
-
-    );
-
+    setInterval(getSignal, 5000);
 }
-
 
 
 /* ================= INIT ================= */
 
 window.onload = () => {
 
-    loadChart(
-
-        "BINANCE:BTCUSDT"
-
-    );
-
-
-
+    loadChart("BINANCE:BTCUSDT");
     startBot();
-
 };

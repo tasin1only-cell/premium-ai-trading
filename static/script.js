@@ -1,28 +1,29 @@
-console.log("LEVEL 8 FIXED SYSTEM LOADED");
+console.log("LEVEL 8 FULL FIX SYSTEM LOADED");
 
 const API_URL = "/api/signal";
 
 let running = false;
 let started = false;
 
-/* CLOCK */
+// ======================
+// CLOCK
+// ======================
 setInterval(() => {
     const el = document.getElementById("clock");
     if (el) el.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
-/* CANDLE SYNC */
-function getCandleRemaining() {
-    return 60 - new Date().getSeconds();
-}
-
+// ======================
+// CANDLE TIMER (SYNC)
+// ======================
 setInterval(() => {
+    const sec = new Date().getSeconds();
+    const remaining = 60 - sec;
+
     const el = document.getElementById("candle");
     if (!el) return;
 
-    const remaining = getCandleRemaining();
-
-    el.innerText = `Candle Ends : 00:${String(remaining).padStart(2,"0")}`;
+    el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
 
     el.style.color =
         remaining <= 5 ? "red" :
@@ -31,16 +32,41 @@ setInterval(() => {
 
 }, 1000);
 
-/* CHART */
-function loadChart(symbol = "FX:EURUSD") {
+// ======================
+// ASSET MAP (IMPORTANT FIX)
+// ======================
+const assetMap = {
+    "EUR/USD": "FX:EURUSD",
+    "GBP/USD": "FX:GBPUSD",
+    "USD/JPY": "FX:USDJPY",
+    "BTC/USD": "BINANCE:BTCUSDT",
+    "ETH/USD": "BINANCE:ETHUSDT",
+    "XAU/USD": "OANDA:XAUUSD"
+};
+
+// ======================
+// CURRENT SYMBOL STATE
+// ======================
+let currentSymbol = "FX:EURUSD";
+
+// ======================
+// CHART LOAD (FULL RESET FIX)
+// ======================
+function loadChart(symbol) {
+
+    currentSymbol = symbol;
 
     setTimeout(() => {
         const el = document.getElementById("tradingview_chart");
         if (!el) return;
 
+        // 🔥 IMPORTANT CLEAN RESET
         el.innerHTML = "";
 
-        if (!window.TradingView) return;
+        if (!window.TradingView) {
+            console.log("TradingView not loaded");
+            return;
+        }
 
         new TradingView.widget({
             container_id: "tradingview_chart",
@@ -50,17 +76,30 @@ function loadChart(symbol = "FX:EURUSD") {
             interval: "1",
             theme: "dark",
             style: "1",
-            locale: "en"
+            locale: "en",
+            hide_side_toolbar: true,
+            allow_symbol_change: false
         });
 
-    }, 700);
+    }, 600);
 }
 
-/* UI */
-function updateUI(data) {
+// ======================
+// FIXED ASSET CHANGE (MAIN FIX)
+// ======================
+function changeAsset() {
+    const asset = document.getElementById("asset").value;
+    const symbol = assetMap[asset] || "FX:EURUSD";
 
-    const rsi = data.rsi ?? 50;
-    const price = data.price ?? 0;
+    console.log("ASSET CHANGED →", asset, symbol);
+
+    loadChart(symbol);
+}
+
+// ======================
+// UI UPDATE
+// ======================
+function updateUI(data) {
 
     const set = (id, val) => {
         const el = document.getElementById(id);
@@ -70,10 +109,14 @@ function updateUI(data) {
     set("signalBox", "SIGNAL : " + (data.signal || "WAIT"));
     set("trendBox", "TREND : " + (data.trend || "SIDE"));
     set("conf", "Confidence : " + (data.confidence || 50) + "%");
+
     set("marketBox", "Market : " + (data.market || "UNKNOWN"));
     set("riskBox", "Risk : " + (data.risk || "UNKNOWN"));
     set("probBox", "Probability : " + (data.probability || 0) + "%");
     set("strengthBox", "Strength : " + (data.strength || "NONE"));
+
+    const rsi = data.rsi ?? 50;
+    const price = data.price ?? 0;
 
     const fill = document.getElementById("rsiFill");
     if (fill) fill.style.width = rsi + "%";
@@ -93,7 +136,9 @@ function updateUI(data) {
     }
 }
 
-/* SIGNAL */
+// ======================
+// SIGNAL FETCH
+// ======================
 async function generateSignal() {
 
     if (running) return;
@@ -112,7 +157,9 @@ async function generateSignal() {
     setTimeout(() => running = false, 1200);
 }
 
-/* START */
+// ======================
+// START BOT (SYNC SAFE)
+// ======================
 function startBot() {
 
     if (started) return;
@@ -125,8 +172,18 @@ function startBot() {
     }, 60000);
 }
 
-/* INIT */
+// ======================
+// INIT
+// ======================
 window.onload = () => {
-    loadChart();
+
+    loadChart(currentSymbol); // 🔥 FIXED INIT
+
     startBot();
+
+    // 🔥 AUTO HOOK for asset dropdown (important fix)
+    const asset = document.getElementById("asset");
+    if (asset) {
+        asset.addEventListener("change", changeAsset);
+    }
 };

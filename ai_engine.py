@@ -1,8 +1,7 @@
 import numpy as np
 import time
 
-last_signal_minute = -1
-
+last_candle_index = -1
 
 # ======================
 # EMA
@@ -54,10 +53,10 @@ def macd(data):
 
 
 # ======================
-# AI ENGINE (LEVEL 8 STABLE)
+# ENGINE (LEVEL 9 SYNC FIX)
 # ======================
 def ai_engine(prices):
-    global last_signal_minute
+    global last_candle_index
 
     if len(prices) < 30:
         return {
@@ -72,16 +71,16 @@ def ai_engine(prices):
             "rsi": 50,
             "ema20": 0,
             "ema50": 0,
-            "macd": 0
+            "macd": 0,
+            "timestamp": int(time.time())
         }
 
-    now = time.time()
-    minute = int(now // 60)
+    # ======================
+    # CANDLE LOCK (INDEX BASED)
+    # ======================
+    current_index = len(prices)
 
-    # ======================
-    # CANDLE LOCK
-    # ======================
-    if minute == last_signal_minute:
+    if current_index == last_candle_index:
         return {
             "signal": "WAIT",
             "confidence": 50,
@@ -90,11 +89,12 @@ def ai_engine(prices):
             "market": "HOLD",
             "risk": "LOW",
             "strength": "NONE",
-            "price": round(prices[-1], 2),
-            "rsi": round(rsi(prices), 2),
-            "ema20": round(ema(prices, 20), 2),
-            "ema50": round(ema(prices, 50), 2),
-            "macd": round(macd(prices), 4)
+            "price": prices[-1],
+            "rsi": rsi(prices),
+            "ema20": ema(prices, 20),
+            "ema50": ema(prices, 50),
+            "macd": macd(prices),
+            "timestamp": int(time.time())
         }
 
     ema20 = ema(prices, 20)
@@ -102,7 +102,10 @@ def ai_engine(prices):
     r = rsi(prices)
     m = macd(prices)
 
-    momentum = prices[-1] - prices[-15]
+    if len(prices) < 2:
+        momentum = 0
+    else:
+        momentum = prices[-1] - prices[-2]
 
     score = 0
 
@@ -118,26 +121,25 @@ def ai_engine(prices):
 
     if m > 0:
         score += 20
-    elif m < 0:
+    else:
         score -= 20
 
-    if momentum > 0.6:
+    if momentum > 0:
         score += 15
-    elif momentum < -0.6:
+    elif momentum < 0:
         score -= 15
 
-    probability = max(1, min(99, 50 + score))
-    confidence = min(95, 55 + abs(score))
+    probability = min(99, max(1, 50 + score))
 
     if score >= 60:
         signal = "BUY"
         trend = "UP"
-        last_signal_minute = minute
+        last_candle_index = current_index
 
     elif score <= -60:
         signal = "SELL"
         trend = "DOWN"
-        last_signal_minute = minute
+        last_candle_index = current_index
 
     else:
         signal = "WAIT"
@@ -145,8 +147,8 @@ def ai_engine(prices):
 
     return {
         "signal": signal,
-        "confidence": round(confidence, 2),
-        "probability": round(probability, 2),
+        "confidence": min(95, 55 + abs(score)),
+        "probability": probability,
         "trend": trend,
         "market": "ACTIVE",
         "risk": "MEDIUM",
@@ -155,5 +157,6 @@ def ai_engine(prices):
         "rsi": round(r, 2),
         "ema20": round(ema20, 2),
         "ema50": round(ema50, 2),
-        "macd": round(m, 4)
+        "macd": round(m, 4),
+        "timestamp": int(time.time())
     }

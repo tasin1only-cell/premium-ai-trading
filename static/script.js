@@ -1,9 +1,10 @@
-console.log("STABLE RESET PACK LOADED");
+console.log("STABLE AI SYSTEM LOADED");
 
 const API = "/api/signal";
 const STATUS = "/api/status";
 
 let lastCandle = 0;
+let running = false;
 
 /* CLOCK */
 setInterval(() => {
@@ -11,76 +12,70 @@ setInterval(() => {
     if (el) el.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
-
-/* CANDLE SYNC (REAL FIX) */
-setInterval(async () => {
+/* CANDLE SYNC (ONLY ON NEW CANDLE) */
+async function checkCandle() {
     try {
         const res = await fetch(STATUS);
         const data = await res.json();
 
         if (data.candle_start !== lastCandle) {
             lastCandle = data.candle_start;
-            fetchSignal();
+            fetchSignal(); // ONLY ON NEW CANDLE
         }
-
     } catch (e) {}
-}, 3000);
+}
 
+setInterval(checkCandle, 3000);
 
-/* SIGNAL */
+/* SIGNAL FETCH (ANTI SPAM) */
 async function fetchSignal() {
+    if (running) return;
+    running = true;
+
     try {
         const res = await fetch(API);
         const data = await res.json();
 
-        if (!data) return;
+        if (!data || data.market === "WARMUP") return;
 
         updateUI(data);
 
     } catch (e) {
         console.log(e);
     }
+
+    setTimeout(() => running = false, 1500);
 }
 
-
 /* UI */
-function updateUI(d) {
+function updateUI(data) {
 
-    const set = (id, v) => {
+    const set = (id, val) => {
         const el = document.getElementById(id);
-        if (el) el.innerText = v;
+        if (el) el.innerText = val;
     };
 
-    set("signalBox", "SIGNAL : " + d.signal);
-    set("trendBox", "TREND : " + d.trend);
-    set("conf", "Confidence : " + d.confidence + "%");
-    set("marketBox", "Market : " + d.market);
-    set("riskBox", "Risk : " + d.risk);
-    set("probBox", "Probability : " + d.probability + "%");
-    set("strengthBox", "Strength : " + d.strength);
+    set("signalBox", "SIGNAL : " + data.signal);
+    set("trendBox", "TREND : " + data.trend);
+    set("conf", "Confidence : " + data.confidence + "%");
+    set("marketBox", "Market : " + data.market);
+    set("riskBox", "Risk : " + data.risk);
+    set("probBox", "Probability : " + data.probability + "%");
+    set("strengthBox", "Strength : " + data.strength);
 
-    const rsi = d.rsi ?? 50;
+    const rsi = data.rsi ?? 50;
     const fill = document.getElementById("rsiFill");
     if (fill) fill.style.width = rsi + "%";
 
     const log = document.getElementById("historyLog");
-
     if (log) {
         const div = document.createElement("div");
-        div.innerText =
-            `${d.signal} | RSI ${rsi} | Price ${d.price}`;
-
+        div.innerText = `${data.signal} | RSI ${rsi} | ${data.price}`;
         log.prepend(div);
-
-        while (log.childNodes.length > 15) {
-            log.removeChild(log.lastChild);
-        }
     }
 }
 
-
-/* INIT */
+/* START */
 window.onload = () => {
     fetchSignal();
-    setInterval(fetchSignal, 60000);
 };

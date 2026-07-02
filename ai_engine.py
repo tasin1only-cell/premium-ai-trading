@@ -7,7 +7,7 @@ last_signal = "WAIT"
 
 def ema(data, period):
     if len(data) < period:
-        return data[-1] if data else 0
+        return data[-1]
 
     alpha = 2 / (period + 1)
     result = np.mean(data[:period])
@@ -22,8 +22,7 @@ def rsi(data, period=14):
     if len(data) < period + 1:
         return 50
 
-    gains = []
-    losses = []
+    gains, losses = [], []
 
     for i in range(1, period + 1):
         diff = data[-i] - data[-i - 1]
@@ -45,8 +44,10 @@ def macd(data):
     return ema(data, 12) - ema(data, 26)
 
 
+# ==========================
+# FIXED ENGINE (FAST + NON-STUCK)
+# ==========================
 def ai_engine(prices, candle_start):
-
     global last_candle, last_signal
 
     if len(prices) < 30:
@@ -54,7 +55,7 @@ def ai_engine(prices, candle_start):
             "signal": "WAIT",
             "confidence": 50,
             "trend": "SIDE",
-            "market": "NO_DATA",
+            "market": "WARMUP",
             "risk": "LOW",
             "strength": "NONE",
             "price": prices[-1] if prices else 0,
@@ -68,49 +69,44 @@ def ai_engine(prices, candle_start):
     r = rsi(prices)
     m = macd(prices)
 
-    momentum = prices[-1] - prices[-5]  # 🔥 faster reaction
+    momentum = prices[-1] - prices[-3]   # FAST RESPONSE FIX
 
     score = 0
 
-    if ema20 > ema50:
-        score += 30
-    else:
-        score -= 30
+    score += 30 if ema20 > ema50 else -30
 
-    if r > 55:
+    if r > 60:
+        score += 20
+    elif r < 40:
+        score -= 20
+
+    score += 25 if m > 0 else -25
+
+    if momentum > 0.3:
         score += 15
-    elif r < 45:
+    elif momentum < -0.3:
         score -= 15
 
-    if m > 0:
-        score += 20
-    else:
-        score -= 20
+    probability = max(5, min(95, 50 + score))
 
-    if momentum > 0.5:
-        score += 20
-    elif momentum < -0.5:
-        score -= 20
-
-    probability = max(1, min(99, 50 + score))
-
-    # 🔥 LOWER THRESHOLD (IMPORTANT FIX)
-    if score >= 35:
+    if score >= 40:
         signal = "BUY"
         trend = "UP"
-    elif score <= -35:
+    elif score <= -40:
         signal = "SELL"
         trend = "DOWN"
     else:
         signal = "WAIT"
         trend = "SIDE"
 
-    # 🔥 allow signal change every candle
+    # FORCE CHANGE EVERY CANDLE (IMPORTANT FIX)
     if candle_start != last_candle:
         last_candle = candle_start
         last_signal = signal
+    else:
+        signal = last_signal
 
-    confidence = min(95, 50 + abs(score))
+    confidence = min(95, 55 + abs(score))
 
     return {
         "signal": signal,
@@ -126,5 +122,6 @@ def ai_engine(prices, candle_start):
         "ema20": round(ema20, 2),
         "ema50": round(ema50, 2),
         "macd": round(m, 4),
+
         "timestamp": int(time.time())
     }

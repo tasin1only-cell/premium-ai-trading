@@ -16,7 +16,6 @@ border-radius:20px;
 border:1px solid gold;
 box-shadow:0 0 30px rgba(255,215,0,0.25);
 
-/* 🔥 IMPORTANT FIX */
 display:flex;
 flex-direction:column;
 gap:12px;
@@ -28,15 +27,14 @@ text-align:center;
 color:gold;
 }
 
-/* FIXED BLOCKS */
-.info-card,.signal-card,.history{
+.box{
 background:#171717;
-padding:15px;
-border-radius:12px;
+padding:10px;
+border-radius:10px;
 border:1px solid rgba(255,215,0,0.1);
 }
 
-/* 🔥 CHART FIX (MOST IMPORTANT) */
+/* 🔥 CHART FIX */
 .chart-card{
 width:100%;
 height:320px;
@@ -44,8 +42,6 @@ background:#0f0f0f;
 border-radius:12px;
 border:1px solid gold;
 overflow:hidden;
-
-/* FIX TRADINGVIEW OVERFLOW */
 position:relative;
 }
 
@@ -57,7 +53,7 @@ top:0;
 left:0;
 }
 
-/* SELECT FIX */
+/* SELECT */
 select{
 width:100%;
 padding:10px;
@@ -67,35 +63,20 @@ border:1px solid gold;
 border-radius:8px;
 }
 
-/* BUTTON */
-button{
-width:100%;
-padding:14px;
-background:gold;
-border:none;
-border-radius:10px;
+/* CLOCK */
+#clock{
+color:gold;
+font-size:22px;
 font-weight:bold;
-cursor:pointer;
+text-align:center;
 }
 
-button:hover{
-transform:scale(1.02);
-}
-
-/* TEXT */
-#clock{color:gold;font-size:22px;font-weight:bold;}
+/* SIGNAL */
 #signalBox{color:#00ff66;}
 #conf{color:gold;}
 #candle{color:#ffcc00;}
 
-.trend-box{
-text-align:center;
-padding:10px;
-border-radius:10px;
-font-weight:bold;
-background:#222;
-}
-
+/* RSI */
 .rsi-bar{
 width:100%;
 height:12px;
@@ -111,8 +92,17 @@ background:orange;
 transition:0.5s;
 }
 
+/* HISTORY */
 .history{
+background:#111;
+padding:10px;
+border-radius:10px;
 font-size:12px;
-max-height:120px;
+max-height:140px;
 overflow:auto;
+}
+
+#historyLog div{
+border-bottom:1px solid #222;
+padding:4px;
 }

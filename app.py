@@ -2,6 +2,7 @@ from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 import threading
 import time
+import random
 from ai_engine import ai_engine
 
 app = Flask(__name__)
@@ -10,20 +11,22 @@ CORS(app)
 prices = []
 candle_start = int(time.time())
 
-# ===============================
-# TEST PRICE FEED
-# ===============================
+
+# TEST FEED
 def get_binance_price():
-    return 100000.0
+
+    base = 100000
+
+    move = random.uniform(-30, 30)
+
+    return round(base + move, 2)
 
 
-# ===============================
-# STABLE LOOP
-# ===============================
 def price_loop():
+
     global candle_start
 
-    last_price = 100000.0
+    last_price = 100000
 
     while True:
 
@@ -32,14 +35,19 @@ def price_loop():
         if price is None:
             price = last_price
 
-        if price > 0:
+        if len(prices) == 0:
+
+            prices.extend([price] * 60)
+
+        else:
+
             prices.append(price)
-            last_price = price
+
+        last_price = price
 
         if len(prices) > 2000:
             prices.pop(0)
 
-        # 1 minute candle
         if int(time.time()) - candle_start >= 60:
             candle_start = int(time.time())
 
@@ -58,27 +66,41 @@ def signal():
 
 @app.route("/api/status")
 def status():
+
     return jsonify({
-        "candle_start": candle_start,
-        "price_len": len(prices),
+
         "running": True,
-        "last_price": prices[-1] if prices else 0
+
+        "price_len": len(prices),
+
+        "last_price": prices[-1] if prices else 0,
+
+        "candle_start": candle_start
+
     })
 
 
 @app.route("/api/history")
 def history():
+
     return jsonify(prices[-100:])
 
 
 threading.Thread(
+
     target=price_loop,
+
     daemon=True
+
 ).start()
 
 
 if __name__ == "__main__":
+
     app.run(
+
         host="0.0.0.0",
+
         port=10000
+
     )

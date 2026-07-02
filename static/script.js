@@ -11,10 +11,9 @@ setInterval(() => {
     if (el) el.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
-/* CANDLE SYNC (REAL FIX - aligned with minute boundary) */
+/* CANDLE SYNC */
 function getCandleRemaining() {
-    const sec = new Date().getSeconds();
-    return 60 - sec;
+    return 60 - new Date().getSeconds();
 }
 
 setInterval(() => {
@@ -32,7 +31,7 @@ setInterval(() => {
 
 }, 1000);
 
-/* CHART SAFE */
+/* CHART */
 function loadChart(symbol = "FX:EURUSD") {
 
     setTimeout(() => {
@@ -57,7 +56,7 @@ function loadChart(symbol = "FX:EURUSD") {
     }, 700);
 }
 
-/* UI UPDATE (LEVEL 8 FULL FIX) */
+/* UI */
 function updateUI(data) {
 
     const rsi = data.rsi ?? 50;
@@ -71,22 +70,18 @@ function updateUI(data) {
     set("signalBox", "SIGNAL : " + (data.signal || "WAIT"));
     set("trendBox", "TREND : " + (data.trend || "SIDE"));
     set("conf", "Confidence : " + (data.confidence || 50) + "%");
-
     set("marketBox", "Market : " + (data.market || "UNKNOWN"));
     set("riskBox", "Risk : " + (data.risk || "UNKNOWN"));
     set("probBox", "Probability : " + (data.probability || 0) + "%");
     set("strengthBox", "Strength : " + (data.strength || "NONE"));
 
-    /* RSI BAR */
     const fill = document.getElementById("rsiFill");
     if (fill) fill.style.width = rsi + "%";
 
-    /* HISTORY */
     const log = document.getElementById("historyLog");
 
     if (log) {
         const div = document.createElement("div");
-
         div.innerText =
             `${data.signal} | RSI ${rsi} | Price ${price} | Prob ${data.probability ?? 0}%`;
 
@@ -98,7 +93,7 @@ function updateUI(data) {
     }
 }
 
-/* SIGNAL FETCH */
+/* SIGNAL */
 async function generateSignal() {
 
     if (running) return;
@@ -107,8 +102,6 @@ async function generateSignal() {
     try {
         const res = await fetch(API_URL);
         const data = await res.json();
-
-        console.log("SIGNAL:", data);
 
         updateUI(data);
 
@@ -119,7 +112,7 @@ async function generateSignal() {
     setTimeout(() => running = false, 1200);
 }
 
-/* CANDLE SYNC START */
+/* START */
 function startBot() {
 
     if (started) return;
@@ -134,8 +127,6 @@ function startBot() {
 
 /* INIT */
 window.onload = () => {
-
     loadChart();
-
     startBot();
 };

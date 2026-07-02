@@ -1,8 +1,9 @@
-console.log("LEVEL 7 AI TRADING LOADED");
+console.log("LEVEL 7 STABLE AI LOADED");
 
 const API_URL = "/api/signal";
 
 let running = false;
+
 
 setInterval(() => {
     const el = document.getElementById("clock");
@@ -37,15 +38,14 @@ function updateUI(d) {
     set("probBox", "Probability : " + d.probability + "%");
     set("strengthBox", "Strength : " + d.strength);
 
-    document.getElementById("rsiFill").style.width = d.rsi + "%";
+    const rsiFill = document.getElementById("rsiFill");
+    if (rsiFill) rsiFill.style.width = d.rsi + "%";
 
     const log = document.getElementById("historyLog");
 
     if (log) {
         const div = document.createElement("div");
-
-        div.innerText =
-            `${d.signal} | RSI ${d.rsi} | Price ${d.price}`;
+        div.innerText = `${d.signal} | RSI ${d.rsi} | Price ${d.price}`;
 
         log.prepend(div);
 
@@ -65,10 +65,10 @@ async function getSignal() {
         const data = await res.json();
         updateUI(data);
     } catch (e) {
-        console.log(e);
+        console.log("API ERROR", e);
     }
 
-    setTimeout(() => running = false, 1500);
+    setTimeout(() => running = false, 1200);
 }
 
 

@@ -1,4 +1,4 @@
-console.log("LEVEL 8 FULL FIX SYSTEM LOADED");
+console.log("LEVEL 9 SYNC SYSTEM LOADED");
 
 const API_URL = "/api/signal";
 
@@ -14,59 +14,30 @@ setInterval(() => {
 }, 1000);
 
 // ======================
-// CANDLE TIMER (SYNC)
+// CANDLE TIMER (SYNC REAL)
 // ======================
 setInterval(() => {
     const sec = new Date().getSeconds();
     const remaining = 60 - sec;
 
     const el = document.getElementById("candle");
-    if (!el) return;
 
-    el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
-
-    el.style.color =
-        remaining <= 5 ? "red" :
-        remaining <= 15 ? "orange" :
-        "#ffcc00";
-
+    if (el) {
+        el.innerText = `Candle Ends : 00:${String(remaining).padStart(2, "0")}`;
+    }
 }, 1000);
 
 // ======================
-// ASSET MAP (IMPORTANT FIX)
+// CHART
 // ======================
-const assetMap = {
-    "EUR/USD": "FX:EURUSD",
-    "GBP/USD": "FX:GBPUSD",
-    "USD/JPY": "FX:USDJPY",
-    "BTC/USD": "BINANCE:BTCUSDT",
-    "ETH/USD": "BINANCE:ETHUSDT",
-    "XAU/USD": "OANDA:XAUUSD"
-};
-
-// ======================
-// CURRENT SYMBOL STATE
-// ======================
-let currentSymbol = "FX:EURUSD";
-
-// ======================
-// CHART LOAD (FULL RESET FIX)
-// ======================
-function loadChart(symbol) {
-
-    currentSymbol = symbol;
-
+function loadChart(symbol = "FX:EURUSD") {
     setTimeout(() => {
         const el = document.getElementById("tradingview_chart");
         if (!el) return;
 
-        // 🔥 IMPORTANT CLEAN RESET
         el.innerHTML = "";
 
-        if (!window.TradingView) {
-            console.log("TradingView not loaded");
-            return;
-        }
+        if (!window.TradingView) return;
 
         new TradingView.widget({
             container_id: "tradingview_chart",
@@ -76,24 +47,9 @@ function loadChart(symbol) {
             interval: "1",
             theme: "dark",
             style: "1",
-            locale: "en",
-            hide_side_toolbar: true,
-            allow_symbol_change: false
+            locale: "en"
         });
-
-    }, 600);
-}
-
-// ======================
-// FIXED ASSET CHANGE (MAIN FIX)
-// ======================
-function changeAsset() {
-    const asset = document.getElementById("asset").value;
-    const symbol = assetMap[asset] || "FX:EURUSD";
-
-    console.log("ASSET CHANGED →", asset, symbol);
-
-    loadChart(symbol);
+    }, 700);
 }
 
 // ======================
@@ -101,22 +57,29 @@ function changeAsset() {
 // ======================
 function updateUI(data) {
 
-    const set = (id, val) => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = val;
-    };
-
-    set("signalBox", "SIGNAL : " + (data.signal || "WAIT"));
-    set("trendBox", "TREND : " + (data.trend || "SIDE"));
-    set("conf", "Confidence : " + (data.confidence || 50) + "%");
-
-    set("marketBox", "Market : " + (data.market || "UNKNOWN"));
-    set("riskBox", "Risk : " + (data.risk || "UNKNOWN"));
-    set("probBox", "Probability : " + (data.probability || 0) + "%");
-    set("strengthBox", "Strength : " + (data.strength || "NONE"));
-
     const rsi = data.rsi ?? 50;
     const price = data.price ?? 0;
+
+    document.getElementById("signalBox").innerText =
+        "SIGNAL : " + data.signal;
+
+    document.getElementById("trendBox").innerText =
+        "TREND : " + data.trend;
+
+    document.getElementById("conf").innerText =
+        "Confidence : " + data.confidence + "%";
+
+    document.getElementById("marketBox").innerText =
+        "Market : " + data.market;
+
+    document.getElementById("riskBox").innerText =
+        "Risk : " + data.risk;
+
+    document.getElementById("probBox").innerText =
+        "Probability : " + data.probability + "%";
+
+    document.getElementById("strengthBox").innerText =
+        "Strength : " + data.strength;
 
     const fill = document.getElementById("rsiFill");
     if (fill) fill.style.width = rsi + "%";
@@ -124,9 +87,13 @@ function updateUI(data) {
     const log = document.getElementById("historyLog");
 
     if (log) {
+        const time = data.timestamp
+            ? new Date(data.timestamp * 1000).toLocaleTimeString()
+            : new Date().toLocaleTimeString();
+
         const div = document.createElement("div");
         div.innerText =
-            `${data.signal} | RSI ${rsi} | Price ${price} | Prob ${data.probability ?? 0}%`;
+            `${time} | ${data.signal} | RSI ${rsi} | Price ${price} | Prob ${data.probability}%`;
 
         log.prepend(div);
 
@@ -140,16 +107,13 @@ function updateUI(data) {
 // SIGNAL FETCH
 // ======================
 async function generateSignal() {
-
     if (running) return;
     running = true;
 
     try {
         const res = await fetch(API_URL);
         const data = await res.json();
-
         updateUI(data);
-
     } catch (e) {
         console.log(e);
     }
@@ -158,32 +122,28 @@ async function generateSignal() {
 }
 
 // ======================
-// START BOT (SYNC SAFE)
+// START (CANDLE SYNC FIX)
 // ======================
 function startBot() {
 
     if (started) return;
     started = true;
 
-    generateSignal();
+    const run = () => generateSignal();
 
-    setInterval(() => {
-        generateSignal();
-    }, 60000);
+    const sec = new Date().getSeconds();
+    const delay = (60 - sec) * 1000;
+
+    setTimeout(() => {
+        run();
+        setInterval(run, 60000);
+    }, delay);
 }
 
 // ======================
 // INIT
 // ======================
 window.onload = () => {
-
-    loadChart(currentSymbol); // 🔥 FIXED INIT
-
+    loadChart();
     startBot();
-
-    // 🔥 AUTO HOOK for asset dropdown (important fix)
-    const asset = document.getElementById("asset");
-    if (asset) {
-        asset.addEventListener("change", changeAsset);
-    }
 };

@@ -3,3 +3,6 @@ flask-cors
 numpy
 websocket-client
 gunicorn
+pandas
+joblib
+xgboost
